@@ -1,32 +1,40 @@
 import { useState, useCallback } from 'react';
 import { StyleSheet, Dimensions, Image, TextInput, ActivityIndicator, ScrollView } from 'react-native';
 import { Link } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
+import { MaterialIcons } from '@expo/vector-icons';
+
+// Components
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+
+// Hooks & Types
 import { usePigs } from '@/hooks/usePigs';
-import { useFocusEffect } from '@react-navigation/native';
 import type { Pig } from '@/utils/database';
-import { MaterialIcons } from '@expo/vector-icons';
-import {ConfirmDialog} from '@/components/ConfirmDialog';
 
 type CategoryFilter = 'All' | 'Adult' | 'Young';
 
 export default function PigsScreen() {
+  // Hooks
   const { pigs, isLoading, error, searchPigs, refreshPigs, deletePig } = usePigs();
+
+  // State
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('All');
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
-  // Refresh pigs list when screen comes into focus
+  // Auto-refresh on focus
   useFocusEffect(
     useCallback(() => {
       refreshPigs();
     }, [refreshPigs])
   );
 
+  // Handlers
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     searchPigs(query);
@@ -54,58 +62,120 @@ export default function PigsScreen() {
     }
   };
 
+  // Render helper functions
+  const renderHeader = () => (
+    <ThemedView style={styles.headerContent}>
+      <Image 
+        source={require('@/assets/images/pig.png')}
+        style={styles.headerIcon}
+      />
+      <ThemedView style={styles.headerTextContainer}>
+        <ThemedText style={styles.headerTitle}>Pig Management</ThemedText>
+        <ThemedText style={styles.headerSubtitle}>
+          Monitor and track your pigs' health
+        </ThemedText>
+      </ThemedView>
+      <Link href="/(pigs)/new" style={styles.addButton}>
+        <IconSymbol name="plus.circle.fill" size={20} color="#007AFF" />
+        <ThemedText style={styles.addButtonText}>Add New Pig</ThemedText>
+      </Link>
+    </ThemedView>
+  );
+
+  const renderSearchAndFilter = () => (
+    <ThemedView style={styles.searchContainer}>
+      <ThemedView style={styles.searchBar}>
+        <IconSymbol name="magnifyingglass" size={20} color="#8E8E93" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search pigs..."
+          placeholderTextColor="#8E8E93"
+          value={searchQuery}
+          onChangeText={handleSearch}
+        />
+      </ThemedView>
+      <ThemedView style={styles.filterChips}>
+        {(['All', 'Adult', 'Young'] as CategoryFilter[]).map((category) => (
+          <ThemedView
+            key={category}
+            style={[
+              styles.chip,
+              categoryFilter === category && styles.chipActive
+            ]}
+            onTouchEnd={() => setCategoryFilter(category)}
+          >
+            <ThemedText style={[
+              styles.chipText,
+              categoryFilter === category && styles.chipTextActive
+            ]}>{category}</ThemedText>
+          </ThemedView>
+        ))}
+      </ThemedView>
+    </ThemedView>
+  );
+
+  const renderPigCard = (pig: Pig) => (
+    <ThemedView key={pig.id} style={styles.pigCard} darkColor="#1C1C1E" lightColor="#FFFFFF">
+      <ThemedView style={styles.pigImageContainer}>
+        {pig.image ? (
+          <Image source={{ uri: pig.image }} style={styles.pigImage} />
+        ) : (
+          <ThemedView style={styles.pigImagePlaceholder} darkColor="#2C2C2E" lightColor="#E5E5EA">
+            <ThemedText style={styles.pigImageInitial}>
+              {pig.name.charAt(0).toUpperCase()}
+            </ThemedText>
+          </ThemedView>
+        )}
+      </ThemedView>
+      <ThemedView style={styles.pigInfo}>
+        <ThemedText style={styles.pigName}>{pig.name}</ThemedText>
+        <ThemedView style={styles.pigMetaInfo}>
+          <ThemedText style={styles.pigDetails} darkColor="#8E8E93" lightColor="#8E8E93">
+            {pig.breed_name}
+          </ThemedText>
+          <ThemedText style={styles.pigDot} darkColor="#8E8E93" lightColor="#8E8E93">•</ThemedText>
+          <ThemedView style={[
+            styles.categoryBadge,
+            pig.category === 'Adult' ? styles.adultBadge : styles.youngBadge
+          ]}>
+            <ThemedText style={styles.categoryText}>{pig.category}</ThemedText>
+          </ThemedView>
+        </ThemedView>
+        <ThemedView style={styles.pigActions}>
+            <Link 
+              href={{
+                pathname: "/(pigs)/[id]/edit",
+                params: { id: pig.id }
+              }} 
+              style={styles.actionButton}
+            >
+              <MaterialIcons name="edit" size={20} color="#007AFF" />
+            </Link>
+            <ThemedView 
+              style={styles.actionButton}
+              darkColor="rgba(142, 142, 147, 0.18)"
+              lightColor="rgba(142, 142, 147, 0.12)"
+              onTouchEnd={() => handleDeleteRequest(pig.id)}
+            >
+              {deletingId === pig.id ? (
+                <ActivityIndicator size="small" color="#FF453A" />
+              ) : (
+                <MaterialIcons name="delete" size={20} color="#FF453A" />
+              )}
+            </ThemedView>
+          </ThemedView>
+      </ThemedView>
+    </ThemedView>
+  );
+
+  // Main render
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <ThemedView style={styles.headerContent}>
-          <Image 
-            source={require('@/assets/images/pig.png')}
-            style={styles.headerIcon}
-          />
-          <ThemedView style={styles.headerTextContainer}>
-            <ThemedText style={styles.headerTitle}>Pig Management</ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-              Monitor and track your pigs' health
-            </ThemedText>
-          </ThemedView>
-          <Link href="/(pigs)/new" style={styles.addButton}>
-            <IconSymbol name="plus.circle.fill" size={20} color="#007AFF" />
-            <ThemedText style={styles.addButtonText}>Add New Pig</ThemedText>
-          </Link>
-        </ThemedView>
-      }>
+      headerImage={renderHeader()}
+    >
       <ThemedView style={styles.container}>
-        {/* Search & Filter */}
-        <ThemedView style={styles.searchContainer}>
-          <ThemedView style={styles.searchBar}>
-            <IconSymbol name="magnifyingglass" size={20} color="#8E8E93" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search pigs..."
-              placeholderTextColor="#8E8E93"
-              value={searchQuery}
-              onChangeText={handleSearch}
-            />
-          </ThemedView>
-          <ThemedView style={styles.filterChips}>
-            {(['All', 'Adult', 'Young'] as CategoryFilter[]).map((category) => (
-              <ThemedView
-                key={category}
-                style={[
-                  styles.chip,
-                  categoryFilter === category && styles.chipActive
-                ]}
-                onTouchEnd={() => setCategoryFilter(category)}
-              >
-                <ThemedText style={[
-                  styles.chipText,
-                  categoryFilter === category && styles.chipTextActive
-                ]}>{category}</ThemedText>
-              </ThemedView>
-            ))}
-          </ThemedView>
-        </ThemedView>
+        {renderSearchAndFilter()}
 
         {isLoading ? (
           <ThemedView style={styles.loadingContainer}>
@@ -129,68 +199,7 @@ export default function PigsScreen() {
           </ThemedView>
         ) : (
           <ScrollView style={styles.pigsList} contentContainerStyle={styles.pigsListContent}>
-            {filteredPigs.map(pig => (
-              <ThemedView key={pig.id} style={styles.pigCard} darkColor="#1C1C1E" lightColor="#FFFFFF">
-                
-                  <ThemedView style={styles.pigImageContainer}>
-                    {pig.image ? (
-                      <Image source={{ uri: pig.image }} style={styles.pigImage} />
-                    ) : (
-                      <ThemedView style={styles.pigImagePlaceholder} darkColor="#2C2C2E" lightColor="#E5E5EA">
-                        <ThemedText style={styles.pigImageInitial}>
-                          {pig.name.charAt(0).toUpperCase()}
-                        </ThemedText>
-                      </ThemedView>
-                    )}
-                  </ThemedView>
-                  <ThemedView style={styles.pigInfo}>
-                    <ThemedText style={styles.pigName}>
-                      {pig.name}
-                    </ThemedText>
-                    <ThemedView style={styles.pigMetaInfo}>
-                      <ThemedText style={styles.pigDetails} darkColor="#8E8E93" lightColor="#8E8E93">
-                        {pig.breed_name}
-                      </ThemedText>
-                      <ThemedText style={styles.pigDot} darkColor="#8E8E93" lightColor="#8E8E93">
-                        •
-                      </ThemedText>
-                      <ThemedView style={[
-                        styles.categoryBadge,
-                        pig.category === 'Adult' ? styles.adultBadge : styles.youngBadge
-                      ]}>
-                        <ThemedText style={styles.categoryText}>
-                          {pig.category}
-                        </ThemedText>
-                      </ThemedView>
-                      <ThemedView style={styles.pigActions}>
-                  <Link 
-                    href={{
-                      pathname: "/(pigs)/[id]/edit",
-                      params: { id: pig.id }
-                    }} 
-                    style={styles.actionButton}
-                  >
-                    <MaterialIcons name="edit" size={20} color="#007AFF" />
-                  </Link>
-                  <ThemedView 
-                    style={styles.actionButton}
-                    darkColor="rgba(142, 142, 147, 0.18)"
-                    lightColor="rgba(142, 142, 147, 0.12)"
-                    onTouchEnd={() => handleDeleteRequest(pig.id)}
-                  >
-                    {deletingId === pig.id ? (
-                      <ActivityIndicator size="small" color="#FF453A" />
-                    ) : (
-                      <MaterialIcons name="delete" size={20} color="#FF453A" />
-                    )}
-                  </ThemedView>
-                </ThemedView>
-                    </ThemedView>
-                    
-                  </ThemedView>
-                
-              </ThemedView>
-            ))}
+            {filteredPigs.map(renderPigCard)}
           </ScrollView>
         )}
       </ThemedView>
@@ -423,7 +432,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingRight: 12,
+    paddingLeft: 100,
   },
   actionButton: {
     padding: 8,

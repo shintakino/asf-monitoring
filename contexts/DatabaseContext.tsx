@@ -23,7 +23,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         await db.execAsync('PRAGMA journal_mode = WAL');
         await db.execAsync('PRAGMA foreign_keys = ON');
 
-        // Create Breeds table if it doesn't exist
+        // Create Breeds table
         await db.execAsync(`
           CREATE TABLE IF NOT EXISTS Breeds (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,7 +35,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           )
         `);
 
-        // Create Pigs table if it doesn't exist
+        // Create Pigs table
         await db.execAsync(`
           CREATE TABLE IF NOT EXISTS Pigs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,6 +48,51 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
             FOREIGN KEY (breed_id) REFERENCES Breeds(id) ON DELETE CASCADE
           )
         `);
+
+        // Create Checklist table
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS Checklist (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symptom TEXT NOT NULL,
+            risk_weight INTEGER NOT NULL CHECK(risk_weight BETWEEN 1 AND 5),
+            treatment_recommendation TEXT NOT NULL
+          )
+        `);
+
+        // Create monitoring_records table
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS monitoring_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pig_id INTEGER NOT NULL,
+            temperature REAL NOT NULL,
+            date DATE NOT NULL,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pig_id) REFERENCES Pigs(id) ON DELETE CASCADE
+          )
+        `);
+
+        // Create checklist_records table
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS checklist_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            monitoring_id INTEGER NOT NULL,
+            checklist_id INTEGER NOT NULL,
+            checked BOOLEAN NOT NULL DEFAULT 0,
+            FOREIGN KEY (monitoring_id) REFERENCES monitoring_records(id) ON DELETE CASCADE,
+            FOREIGN KEY (checklist_id) REFERENCES Checklist(id) ON DELETE CASCADE
+          )
+        `);
+
+        // Create indexes for better performance
+        await db.execAsync(`
+          CREATE INDEX IF NOT EXISTS idx_pig_breed ON Pigs(breed_id);
+          CREATE INDEX IF NOT EXISTS idx_monitoring_pig ON monitoring_records(pig_id);
+          CREATE INDEX IF NOT EXISTS idx_monitoring_date ON monitoring_records(date);
+          CREATE INDEX IF NOT EXISTS idx_checklist_monitoring ON checklist_records(monitoring_id);
+          CREATE INDEX IF NOT EXISTS idx_checklist_item ON checklist_records(checklist_id);
+        `);
+
       } catch (e) {
         console.error('Database initialization failed:', e);
         throw e;

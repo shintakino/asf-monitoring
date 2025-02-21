@@ -11,16 +11,28 @@ export function usePigs() {
   // Fetch all pigs
   const fetchPigs = useCallback(async () => {
     try {
+      console.log('Fetching all pigs...');
       setIsLoading(true);
       setError(null);
       const results = await db.getAllAsync<Pig>(`
-        SELECT Pigs.*, Breeds.name as breed_name 
+        SELECT 
+          Pigs.*, 
+          Breeds.name as breed_name,
+          (
+            SELECT date 
+            FROM monitoring_records 
+            WHERE pig_id = Pigs.id 
+            ORDER BY date DESC 
+            LIMIT 1
+          ) as lastMonitoredDate
         FROM Pigs 
         LEFT JOIN Breeds ON Pigs.breed_id = Breeds.id
         ORDER BY name ASC
       `);
+      console.log('Pigs fetched successfully:', results.length, 'pigs found');
       setPigs(results);
     } catch (e) {
+      console.error('Error fetching pigs:', e);
       setError(e instanceof Error ? e : new Error('Failed to fetch pigs'));
     } finally {
       setIsLoading(false);
@@ -35,6 +47,7 @@ export function usePigs() {
   // Add new pig
   const addPig = useCallback(async (pig: Omit<Pig, 'id' | 'breed_name'>) => {
     try {
+      console.log('Adding new pig:', pig);
       setError(null);
       const result = await db.runAsync(
         `INSERT INTO Pigs (
@@ -49,9 +62,11 @@ export function usePigs() {
           pig.image ?? null,
         ]
       );
+      console.log('Pig added successfully:', result);
       await fetchPigs();
       return result.lastInsertRowId;
     } catch (e) {
+      console.error('Error adding pig:', e);
       const error = e instanceof Error ? e : new Error('Failed to add pig');
       setError(error);
       throw error;
@@ -61,8 +76,9 @@ export function usePigs() {
   // Update pig
   const updatePig = useCallback(async (pig: Omit<Pig, 'breed_name'>) => {
     try {
+      console.log('Updating pig:', pig);
       setError(null);
-      await db.runAsync(
+      const result = await db.runAsync(
         `UPDATE Pigs 
          SET name = ?, age = ?, weight = ?, 
              category = ?, breed_id = ?, image = ?
@@ -77,8 +93,10 @@ export function usePigs() {
           pig.id,
         ]
       );
+      console.log('Pig updated successfully:', result);
       await fetchPigs();
     } catch (e) {
+      console.error('Error updating pig:', e);
       const error = e instanceof Error ? e : new Error('Failed to update pig');
       setError(error);
       throw error;
@@ -88,10 +106,13 @@ export function usePigs() {
   // Delete pig
   const deletePig = useCallback(async (id: number) => {
     try {
+      console.log('Deleting pig with ID:', id);
       setError(null);
-      await db.runAsync('DELETE FROM Pigs WHERE id = ?', [id]);
+      const result = await db.runAsync('DELETE FROM Pigs WHERE id = ?', [id]);
+      console.log('Pig deleted successfully:', result);
       await fetchPigs();
     } catch (e) {
+      console.error('Error deleting pig:', e);
       const error = e instanceof Error ? e : new Error('Failed to delete pig');
       setError(error);
       throw error;
@@ -101,6 +122,7 @@ export function usePigs() {
   // Search pigs
   const searchPigs = useCallback(async (query: string) => {
     try {
+      console.log('Searching pigs with query:', query);
       setIsLoading(true);
       setError(null);
       const results = await db.getAllAsync<Pig>(
@@ -111,8 +133,10 @@ export function usePigs() {
          ORDER BY name ASC`,
         [`%${query}%`]
       );
+      console.log('Search results:', results.length, 'pigs found');
       setPigs(results);
     } catch (e) {
+      console.error('Error searching pigs:', e);
       setError(e instanceof Error ? e : new Error('Failed to search pigs'));
     } finally {
       setIsLoading(false);

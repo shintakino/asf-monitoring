@@ -1,16 +1,159 @@
-import { StyleSheet, Dimensions, Image } from 'react-native';
+import { StyleSheet, Dimensions, Image, ScrollView, ActivityIndicator } from 'react-native';
+import { Link } from 'expo-router';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { usePigs } from '@/hooks/usePigs';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useMemo, useState } from 'react';
+
+// Add this type definition at the top with other types
+type MonitoringFilter = 'All' | 'Monitored' | 'Not Monitored';
 
 export default function DashboardScreen() {
+  const { pigs, isLoading, error, refreshPigs } = usePigs();
+  // Add state for filter
+  const [filterStatus, setFilterStatus] = useState<MonitoringFilter>('All');
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshPigs();
+    }, [refreshPigs])
+  );
+
+  const today = new Date().toISOString().split('T')[0];
+  const monitoredCount = pigs.filter(pig => 
+    pig.lastMonitoredDate === today
+  ).length;
+  const notMonitoredCount = pigs.length - monitoredCount;
+
+  // Add filtered pigs calculation
+  const filteredPigs = useMemo(() => {
+    return pigs.filter(pig => {
+      const isMonitored = pig.lastMonitoredDate === today;
+      switch (filterStatus) {
+        case 'Monitored':
+          return isMonitored;
+        case 'Not Monitored':
+          return !isMonitored;
+        default:
+          return true;
+      }
+    });
+  }, [pigs, filterStatus, today]);
+
+  const renderPigCard = (pig: Pig) => {
+    const isMonitored = pig.lastMonitoredDate === today;
+
+    return (
+      <ThemedView key={pig.id} style={styles.pigCard} darkColor="#1C1C1E" lightColor="#FFFFFF">
+        <Link
+          href={{
+            pathname: "/(pigs)/[id]/monitor" as const,
+            params: { id: pig.id }
+          }}
+          style={styles.pigCardContent}
+        >
+          <ThemedView style={styles.pigImageContainer}>
+            {pig.image ? (
+              <Image source={{ uri: pig.image }} style={styles.pigImage} />
+            ) : (
+              <ThemedView style={styles.pigImagePlaceholder} darkColor="#2C2C2E" lightColor="#E5E5EA">
+                <ThemedText style={styles.pigImageInitial}>
+                  {pig.name.charAt(0).toUpperCase()}
+                </ThemedText>
+              </ThemedView>
+            )}
+          </ThemedView>
+          <ThemedView style={styles.pigInfo}>
+            <ThemedView style={styles.pigNameRow}>
+              <ThemedText style={styles.pigName} darkColor="#FFFFFF" lightColor="#000000">
+                {pig.name}
+              </ThemedText>
+              <ThemedView style={[
+                styles.monitoringBadge,
+                isMonitored ? styles.monitoredBadge : styles.notMonitoredBadge
+              ]}>
+                <IconSymbol 
+                  name={isMonitored ? "checkmark.circle.fill" : "exclamationmark.circle.fill"} 
+                  size={14} 
+                  color={isMonitored ? "#30D158" : "#FF453A"} 
+                />
+                <ThemedText style={[
+                  styles.monitoringText,
+                  isMonitored ? styles.monitoredText : styles.notMonitoredText
+                ]}>
+                  {isMonitored ? 'Monitored' : 'Not Monitored'}
+                </ThemedText>
+              </ThemedView>
+            </ThemedView>
+            <ThemedView style={styles.pigMetaInfo}>
+              <ThemedText style={styles.pigDetails} darkColor="#8E8E93" lightColor="#8E8E93">
+                {pig.breed_name}
+              </ThemedText>
+              <ThemedText style={styles.pigDot} darkColor="#8E8E93" lightColor="#8E8E93">
+                •
+              </ThemedText>
+              <ThemedView style={[
+                styles.categoryBadge,
+                pig.category === 'Adult' ? styles.adultBadge : styles.youngBadge
+              ]}>
+                <ThemedText style={[
+                  styles.categoryText,
+                  pig.category === 'Adult' ? styles.adultText : styles.youngText
+                ]}>
+                  {pig.category}
+                </ThemedText>
+              </ThemedView>
+            </ThemedView>
+          </ThemedView>
+        </Link>
+      </ThemedView>
+    );
+  };
+
+  // Update the filter buttons section
+  const renderFilterButtons = () => (
+    <ThemedView style={styles.filterContainer}>
+      <ThemedText type="subtitle" style={styles.sectionTitle}>Filter Status</ThemedText>
+      <ThemedView style={styles.filterButtons}>
+        {(['All', 'Monitored', 'Not Monitored'] as MonitoringFilter[]).map((status) => (
+          <ThemedView
+            key={status}
+            style={[
+              styles.filterButton,
+              filterStatus === status && styles.filterButtonActive
+            ]}
+            onTouchEnd={() => setFilterStatus(status)}
+          >
+            <IconSymbol 
+              name={
+                status === 'All' ? "list.bullet" :
+                status === 'Monitored' ? "checkmark.circle" :
+                "exclamationmark.circle"
+              } 
+              size={20} 
+              color={filterStatus === status ? "#007AFF" : "#8E8E93"} 
+            />
+            <ThemedText style={[
+              styles.filterButtonText,
+              filterStatus === status && styles.filterButtonTextActive
+            ]}>
+              {status}
+            </ThemedText>
+          </ThemedView>
+        ))}
+      </ThemedView>
+    </ThemedView>
+  );
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
       headerImage={
         <ThemedView style={styles.headerContent}>
-          <Image 
+        <Image
             source={require('@/assets/images/pig.png')}
             style={styles.headerIcon}
           />
@@ -29,51 +172,72 @@ export default function DashboardScreen() {
       {/* Stats Section */}
       <ThemedView style={styles.statsContainer}>
         <ThemedView style={styles.statCard}>
-          <IconSymbol name="pig" size={32} color="#FF9500" />
-          <ThemedText style={styles.statNumber} type="title">0</ThemedText>
+          <IconSymbol name="pawprint.fill" size={32} color="#FF9500" />
+          <ThemedText style={styles.statNumber} type="title">{pigs.length}</ThemedText>
           <ThemedText style={styles.statLabel}>Total Pigs</ThemedText>
         </ThemedView>
         <ThemedView style={styles.statCard}>
           <IconSymbol name="checkmark.circle.fill" size={32} color="#30D158" />
-          <ThemedText style={styles.statNumber} type="title">0</ThemedText>
+          <ThemedText style={styles.statNumber} type="title">{monitoredCount}</ThemedText>
           <ThemedText style={styles.statLabel}>Monitored</ThemedText>
         </ThemedView>
         <ThemedView style={styles.statCard}>
           <IconSymbol name="exclamationmark.circle.fill" size={32} color="#FF453A" />
-          <ThemedText style={styles.statNumber} type="title">0</ThemedText>
+          <ThemedText style={styles.statNumber} type="title">{notMonitoredCount}</ThemedText>
           <ThemedText style={styles.statLabel}>Not Monitored</ThemedText>
         </ThemedView>
       </ThemedView>
 
-      {/* Filter Section */}
-      <ThemedView style={styles.filterContainer}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Filter Status</ThemedText>
-        <ThemedView style={styles.filterButtons}>
-          <ThemedView style={[styles.filterButton, styles.filterButtonActive]}>
-            <IconSymbol name="list.bullet" size={20} color="#007AFF" />
-            <ThemedText style={styles.filterButtonText}>All</ThemedText>
-          </ThemedView>
-          <ThemedView style={styles.filterButton}>
-            <IconSymbol name="checkmark.circle" size={20} color="#30D158" />
-            <ThemedText style={styles.filterButtonText}>Monitored</ThemedText>
-          </ThemedView>
-          <ThemedView style={styles.filterButton}>
-            <IconSymbol name="exclamationmark.circle" size={20} color="#FF453A" />
-            <ThemedText style={styles.filterButtonText}>Not Monitored</ThemedText>
-          </ThemedView>
-        </ThemedView>
-      </ThemedView>
+      {/* Replace the filter section with the new render function */}
+      {renderFilterButtons()}
 
-      {/* Pig List Section */}
+      {/* Update the Pig List Section to use filteredPigs */}
       <ThemedView style={styles.pigListContainer}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Pig Profiles</ThemedText>
-        <ThemedView style={styles.emptyState}>
-          <IconSymbol name="plus.circle.fill" size={48} color="#007AFF" />
-          <ThemedText style={styles.emptyStateText}>No pigs added yet</ThemedText>
-          <ThemedText style={styles.emptyStateSubtext}>
-            Add your first pig to start monitoring
-          </ThemedText>
-        </ThemedView>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>
+          Pig Profiles {filteredPigs.length > 0 && `(${filteredPigs.length})`}
+        </ThemedText>
+        
+        {isLoading ? (
+          <ThemedView style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+          </ThemedView>
+        ) : error ? (
+          <ThemedView style={styles.errorContainer}>
+            <IconSymbol name="exclamationmark.triangle.fill" size={32} color="#FF453A" />
+            <ThemedText style={styles.errorText}>{error.message}</ThemedText>
+          </ThemedView>
+        ) : filteredPigs.length === 0 ? (
+          <ThemedView style={styles.emptyState}>
+            <IconSymbol 
+              name={filterStatus === 'All' ? "plus.circle.fill" : "magnifyingglass"} 
+              size={48} 
+              color="#007AFF" 
+            />
+            <ThemedText style={styles.emptyStateText}>
+              {filterStatus === 'All' 
+                ? 'No pigs added yet'
+                : `No ${filterStatus.toLowerCase()} pigs found`
+              }
+            </ThemedText>
+            <ThemedText style={styles.emptyStateSubtext}>
+              {filterStatus === 'All'
+                ? 'Add your first pig to start monitoring'
+                : 'Try changing your filter selection'
+              }
+            </ThemedText>
+            {filterStatus === 'All' && (
+              <Link href="/(pigs)/new" style={styles.emptyStateButton}>
+                <ThemedText style={styles.emptyStateButtonText}>
+                  Add Your First Pig
+                </ThemedText>
+              </Link>
+            )}
+          </ThemedView>
+        ) : (
+          <ScrollView style={styles.pigsList} contentContainerStyle={styles.pigsListContent}>
+            {filteredPigs.map(renderPigCard)}
+          </ScrollView>
+        )}
       </ThemedView>
     </ParallaxScrollView>
   );
@@ -176,9 +340,9 @@ const styles = StyleSheet.create({
     padding: 8,
     paddingHorizontal: 12,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(142, 142, 147, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(142, 142, 147, 0.1)',
   },
   filterButtonActive: {
     backgroundColor: 'rgba(0, 122, 255, 0.1)',
@@ -187,6 +351,11 @@ const styles = StyleSheet.create({
   filterButtonText: {
     marginLeft: 6,
     fontSize: 14,
+    color: '#8E8E93',
+  },
+  filterButtonTextActive: {
+    color: '#007AFF',
+    fontWeight: '600',
   },
   pigListContainer: {
     padding: 16,
@@ -212,5 +381,154 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.7,
     marginTop: 4,
+  },
+  pigsList: {
+    flex: 1,
+  },
+  pigsListContent: {
+    padding: 16,
+    gap: 12,
+  },
+  pigCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  pigCardContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 12,
+  },
+  pigImageContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  pigImage: {
+    width: '100%',
+    height: '100%',
+  },
+  pigImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pigImageInitial: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#8E8E93',
+  },
+  pigInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  pigNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  pigName: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  pigMetaInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pigDetails: {
+    fontSize: 15,
+  },
+  pigDot: {
+    fontSize: 15,
+    opacity: 0.5,
+  },
+  categoryBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  adultBadge: {
+    backgroundColor: 'rgba(48, 209, 88, 0.2)',
+  },
+  youngBadge: {
+    backgroundColor: 'rgba(255, 149, 0, 0.2)',
+  },
+  adultText: {
+    color: '#30D158',
+  },
+  youngText: {
+    color: '#FF9500',
+  },
+  categoryText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    minHeight: 200,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: 'rgba(255, 69, 58, 0.1)',
+    borderRadius: 16,
+    gap: 12,
+  },
+  errorText: {
+    fontSize: 15,
+    color: '#FF453A',
+    textAlign: 'center',
+  },
+  emptyStateButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 20,
+    marginTop: 16,
+  },
+  emptyStateButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  monitoringBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  monitoredBadge: {
+    backgroundColor: 'rgba(48, 209, 88, 0.1)',
+  },
+  notMonitoredBadge: {
+    backgroundColor: 'rgba(255, 69, 58, 0.1)',
+  },
+  monitoringText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  monitoredText: {
+    color: '#30D158',
+  },
+  notMonitoredText: {
+    color: '#FF453A',
   },
 });

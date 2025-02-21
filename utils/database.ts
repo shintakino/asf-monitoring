@@ -67,9 +67,30 @@ export async function initDatabase() {
       breed_data TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS monitoring_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pig_id INTEGER NOT NULL,
+      temperature REAL NOT NULL,
+      date DATE NOT NULL,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (pig_id) REFERENCES Pigs(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS checklist_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      monitoring_id INTEGER NOT NULL,
+      checklist_id INTEGER NOT NULL,
+      checked BOOLEAN NOT NULL DEFAULT 0,
+      FOREIGN KEY (monitoring_id) REFERENCES monitoring_records(id) ON DELETE CASCADE,
+      FOREIGN KEY (checklist_id) REFERENCES Checklist(id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_pig_breed ON Pigs(breed_id);
     CREATE INDEX IF NOT EXISTS idx_monitoring_pig ON DailyMonitoring(pig_id);
     CREATE INDEX IF NOT EXISTS idx_checklist_results ON ChecklistResults(monitoring_id, checklist_id);
+    CREATE INDEX IF NOT EXISTS idx_monitoring_pig ON monitoring_records(pig_id);
+    CREATE INDEX IF NOT EXISTS idx_checklist_monitoring ON checklist_records(monitoring_id);
   `);
 
   return db;
@@ -106,8 +127,10 @@ export interface Pig {
   weight: number;
   category: 'Adult' | 'Young';
   breed_id: number;
-  image?: string;
-  
+  breed_name?: string;
+  image?: string | null;
+  prone_level: 'Low' | 'Moderate' | 'High';
+  lastMonitoredDate?: string | null;
 }
 
 export interface DailyMonitoring {
@@ -138,4 +161,21 @@ export interface Settings {
   reminder_notifications: boolean;
   checklist_items?: string; // JSON string
   breed_data?: string; // JSON string
+}
+
+// Add these types
+export interface MonitoringRecord {
+  id: number;
+  pig_id: number;
+  temperature: number;
+  date: string;
+  notes?: string;
+  created_at: string;
+}
+
+export interface ChecklistRecord {
+  id: number;
+  monitoring_id: number;
+  checklist_id: number;
+  checked: boolean;
 } 
