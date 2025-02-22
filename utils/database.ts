@@ -64,7 +64,8 @@ export async function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       reminder_notifications BOOLEAN NOT NULL DEFAULT 1,
       checklist_items TEXT,
-      breed_data TEXT
+      breed_data TEXT,
+      monitoring_start_time TEXT
     );
 
     CREATE TABLE IF NOT EXISTS monitoring_records (
@@ -72,6 +73,7 @@ export async function initDatabase() {
       pig_id INTEGER NOT NULL,
       temperature REAL NOT NULL,
       date DATE NOT NULL,
+      time TIME NOT NULL,
       notes TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (pig_id) REFERENCES Pigs(id) ON DELETE CASCADE
@@ -129,8 +131,8 @@ export interface Pig {
   breed_id: number;
   breed_name?: string;
   image?: string | null;
-  prone_level: 'Low' | 'Moderate' | 'High';
   lastMonitoredDate?: string | null;
+  lastMonitoredTime?: string | null;
 }
 
 export interface DailyMonitoring {
@@ -161,6 +163,7 @@ export interface Settings {
   reminder_notifications: boolean;
   checklist_items?: string; // JSON string
   breed_data?: string; // JSON string
+  monitoring_start_time: string; // Format: "HH:mm"
 }
 
 // Add these types
@@ -169,6 +172,7 @@ export interface MonitoringRecord {
   pig_id: number;
   temperature: number;
   date: string;
+  time: string;
   notes?: string;
   created_at: string;
 }
@@ -178,4 +182,13 @@ export interface ChecklistRecord {
   monitoring_id: number;
   checklist_id: number;
   checked: boolean;
+}
+
+// Add this helper type
+export interface MonitoringTiming {
+  lastMonitoredDate?: string | null;
+  lastMonitoredTime?: string | null;
+  nextMonitoringTime?: string | null;
+  canMonitor: boolean;
+  timeRemaining?: string | null;
 } 

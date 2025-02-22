@@ -22,9 +22,16 @@ export function usePigs() {
             SELECT date 
             FROM monitoring_records 
             WHERE pig_id = Pigs.id 
-            ORDER BY date DESC 
+            ORDER BY date DESC, created_at DESC 
             LIMIT 1
-          ) as lastMonitoredDate
+          ) as lastMonitoredDate,
+          (
+            SELECT strftime('%H:%M', created_at) 
+            FROM monitoring_records 
+            WHERE pig_id = Pigs.id 
+            ORDER BY date DESC, created_at DESC 
+            LIMIT 1
+          ) as lastMonitoredTime
         FROM Pigs 
         LEFT JOIN Breeds ON Pigs.breed_id = Breeds.id
         ORDER BY name ASC

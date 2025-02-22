@@ -7,19 +7,24 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { usePigs } from '@/hooks/usePigs';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useMemo, useState } from 'react';
+import { calculateMonitoringTiming } from '@/utils/monitoring';
+import type { Pig } from '@/utils/database';
+import { useSettings } from '@/hooks/useSettings';
 
 // Add this type definition at the top with other types
 type MonitoringFilter = 'All' | 'Monitored' | 'Not Monitored';
 
 export default function DashboardScreen() {
   const { pigs, isLoading, error, refreshPigs } = usePigs();
+  const { settings, refreshSettings } = useSettings();
   // Add state for filter
   const [filterStatus, setFilterStatus] = useState<MonitoringFilter>('All');
 
   useFocusEffect(
     useCallback(() => {
       refreshPigs();
-    }, [refreshPigs])
+      refreshSettings();
+    }, [refreshPigs, refreshSettings])
   );
 
   const today = new Date().toISOString().split('T')[0];
@@ -44,71 +49,172 @@ export default function DashboardScreen() {
   }, [pigs, filterStatus, today]);
 
   const renderPigCard = (pig: Pig) => {
-    const isMonitored = pig.lastMonitoredDate === today;
+    const today = new Date().toISOString().split('T')[0];
+    const monitoringTiming = calculateMonitoringTiming(
+      pig.lastMonitoredTime && pig.lastMonitoredDate === today ? pig.lastMonitoredTime : null,
+      settings?.monitoring_start_time || '08:00'
+    );
 
     return (
       <ThemedView key={pig.id} style={styles.pigCard} darkColor="#1C1C1E" lightColor="#FFFFFF">
-        <Link
-          href={{
-            pathname: "/(pigs)/[id]/monitor" as const,
-            params: { id: pig.id }
-          }}
-          style={styles.pigCardContent}
-        >
-          <ThemedView style={styles.pigImageContainer}>
-            {pig.image ? (
-              <Image source={{ uri: pig.image }} style={styles.pigImage} />
-            ) : (
-              <ThemedView style={styles.pigImagePlaceholder} darkColor="#2C2C2E" lightColor="#E5E5EA">
-                <ThemedText style={styles.pigImageInitial}>
-                  {pig.name.charAt(0).toUpperCase()}
+        {monitoringTiming.canMonitor ? (
+          <Link
+            href={{
+              pathname: "/(pigs)/[id]/monitor" as const,
+              params: { id: pig.id }
+            }}
+            style={styles.pigCardContent}
+          >
+            <ThemedView style={styles.pigImageContainer}>
+              {pig.image ? (
+                <Image source={{ uri: pig.image }} style={styles.pigImage} />
+              ) : (
+                <ThemedView style={styles.pigImagePlaceholder} darkColor="#2C2C2E" lightColor="#E5E5EA">
+                  <ThemedText style={styles.pigImageInitial}>
+                    {pig.name.charAt(0).toUpperCase()}
+                  </ThemedText>
+                </ThemedView>
+              )}
+            </ThemedView>
+            <ThemedView style={styles.pigInfo}>
+              <ThemedView style={styles.pigNameRow}>
+                <ThemedText style={styles.pigName} darkColor="#FFFFFF" lightColor="#000000">
+                  {pig.name}
                 </ThemedText>
-              </ThemedView>
-            )}
-          </ThemedView>
-          <ThemedView style={styles.pigInfo}>
-            <ThemedView style={styles.pigNameRow}>
-              <ThemedText style={styles.pigName} darkColor="#FFFFFF" lightColor="#000000">
-                {pig.name}
-              </ThemedText>
-              <ThemedView style={[
-                styles.monitoringBadge,
-                isMonitored ? styles.monitoredBadge : styles.notMonitoredBadge
-              ]}>
-                <IconSymbol 
-                  name={isMonitored ? "checkmark.circle.fill" : "exclamationmark.circle.fill"} 
-                  size={14} 
-                  color={isMonitored ? "#30D158" : "#FF453A"} 
-                />
-                <ThemedText style={[
-                  styles.monitoringText,
-                  isMonitored ? styles.monitoredText : styles.notMonitoredText
+                <ThemedView style={[
+                  styles.monitoringBadge,
+                  monitoringTiming.lastMonitoredTime ? styles.monitoredBadge : styles.notMonitoredBadge
                 ]}>
-                  {isMonitored ? 'Monitored' : 'Not Monitored'}
+                  <IconSymbol 
+                    name={monitoringTiming.lastMonitoredTime ? "checkmark.circle.fill" : "exclamationmark.circle.fill"} 
+                    size={14} 
+                    color={monitoringTiming.lastMonitoredTime ? "#30D158" : "#FF453A"} 
+                  />
+                  <ThemedText style={[
+                    styles.monitoringText,
+                    monitoringTiming.lastMonitoredTime ? styles.monitoredText : styles.notMonitoredText
+                  ]}>
+                    {monitoringTiming.lastMonitoredTime ? 'Monitored' : 'Not Monitored'}
+                  </ThemedText>
+                </ThemedView>
+              </ThemedView>
+              <ThemedView style={styles.monitoringInfo}>
+                {monitoringTiming.lastMonitoredTime ? (
+                  <>
+                    <ThemedText style={styles.monitoringTimeText}>
+                      Last: {monitoringTiming.lastMonitoredTime}
+                    </ThemedText>
+                    {monitoringTiming.timeRemaining && (
+                      <ThemedText style={styles.monitoringTimeText}>
+                        Next in: {monitoringTiming.timeRemaining}
+                      </ThemedText>
+                    )}
+                  </>
+                ) : (
+                  <ThemedText style={styles.monitoringTimeText}>
+                    {monitoringTiming.canMonitor ? 
+                      'Ready for monitoring' : 
+                      `Starts at ${monitoringTiming.nextMonitoringTime}`
+                    }
+                  </ThemedText>
+                )}
+              </ThemedView>
+              <ThemedView style={styles.pigMetaInfo}>
+                <ThemedText style={styles.pigDetails} darkColor="#8E8E93" lightColor="#8E8E93">
+                  {pig.breed_name}
                 </ThemedText>
+                <ThemedText style={styles.pigDot} darkColor="#8E8E93" lightColor="#8E8E93">
+                  •
+                </ThemedText>
+                <ThemedView style={[
+                  styles.categoryBadge,
+                  pig.category === 'Adult' ? styles.adultBadge : styles.youngBadge
+                ]}>
+                  <ThemedText style={[
+                    styles.categoryText,
+                    pig.category === 'Adult' ? styles.adultText : styles.youngText
+                  ]}>
+                    {pig.category}
+                  </ThemedText>
+                </ThemedView>
               </ThemedView>
             </ThemedView>
-            <ThemedView style={styles.pigMetaInfo}>
-              <ThemedText style={styles.pigDetails} darkColor="#8E8E93" lightColor="#8E8E93">
-                {pig.breed_name}
-              </ThemedText>
-              <ThemedText style={styles.pigDot} darkColor="#8E8E93" lightColor="#8E8E93">
-                •
-              </ThemedText>
-              <ThemedView style={[
-                styles.categoryBadge,
-                pig.category === 'Adult' ? styles.adultBadge : styles.youngBadge
-              ]}>
-                <ThemedText style={[
-                  styles.categoryText,
-                  pig.category === 'Adult' ? styles.adultText : styles.youngText
-                ]}>
-                  {pig.category}
+          </Link>
+        ) : (
+          <ThemedView style={[styles.pigCardContent, styles.pigCardDisabled]}>
+            <ThemedView style={styles.pigImageContainer}>
+              {pig.image ? (
+                <Image source={{ uri: pig.image }} style={styles.pigImage} />
+              ) : (
+                <ThemedView style={styles.pigImagePlaceholder} darkColor="#2C2C2E" lightColor="#E5E5EA">
+                  <ThemedText style={styles.pigImageInitial}>
+                    {pig.name.charAt(0).toUpperCase()}
+                  </ThemedText>
+                </ThemedView>
+              )}
+            </ThemedView>
+            <ThemedView style={styles.pigInfo}>
+              <ThemedView style={styles.pigNameRow}>
+                <ThemedText style={styles.pigName} darkColor="#FFFFFF" lightColor="#000000">
+                  {pig.name}
                 </ThemedText>
+                <ThemedView style={[
+                  styles.monitoringBadge,
+                  monitoringTiming.lastMonitoredTime ? styles.monitoredBadge : styles.notMonitoredBadge
+                ]}>
+                  <IconSymbol 
+                    name={monitoringTiming.lastMonitoredTime ? "checkmark.circle.fill" : "exclamationmark.circle.fill"} 
+                    size={14} 
+                    color={monitoringTiming.lastMonitoredTime ? "#30D158" : "#FF453A"} 
+                  />
+                  <ThemedText style={[
+                    styles.monitoringText,
+                    monitoringTiming.lastMonitoredTime ? styles.monitoredText : styles.notMonitoredText
+                  ]}>
+                    {monitoringTiming.lastMonitoredTime ? 'Monitored' : 'Not Monitored'}
+                  </ThemedText>
+                </ThemedView>
+              </ThemedView>
+              <ThemedView style={styles.monitoringInfo}>
+                {monitoringTiming.lastMonitoredTime ? (
+                  <>
+                    <ThemedText style={styles.monitoringTimeText}>
+                      Last: {monitoringTiming.lastMonitoredTime}
+                    </ThemedText>
+                    {monitoringTiming.timeRemaining && (
+                      <ThemedText style={[styles.monitoringTimeText, styles.nextMonitoringText]}>
+                        Next monitoring in: {monitoringTiming.timeRemaining}
+                      </ThemedText>
+                    )}
+                  </>
+                ) : (
+                  <ThemedText style={styles.monitoringTimeText}>
+                    Starts at {monitoringTiming.nextMonitoringTime}
+                  </ThemedText>
+                )}
+              </ThemedView>
+              <ThemedView style={styles.pigMetaInfo}>
+                <ThemedText style={styles.pigDetails} darkColor="#8E8E93" lightColor="#8E8E93">
+                  {pig.breed_name}
+                </ThemedText>
+                <ThemedText style={styles.pigDot} darkColor="#8E8E93" lightColor="#8E8E93">
+                  •
+                </ThemedText>
+                <ThemedView style={[
+                  styles.categoryBadge,
+                  pig.category === 'Adult' ? styles.adultBadge : styles.youngBadge
+                ]}>
+                  <ThemedText style={[
+                    styles.categoryText,
+                    pig.category === 'Adult' ? styles.adultText : styles.youngText
+                  ]}>
+                    {pig.category}
+                  </ThemedText>
+                </ThemedView>
               </ThemedView>
             </ThemedView>
           </ThemedView>
-        </Link>
+        )}
       </ThemedView>
     );
   };
@@ -226,11 +332,11 @@ export default function DashboardScreen() {
               }
             </ThemedText>
             {filterStatus === 'All' && (
-              <Link href="/(pigs)/new" style={styles.emptyStateButton}>
+            <Link href="/(pigs)/new" style={styles.emptyStateButton}>
                 <ThemedText style={styles.emptyStateButtonText}>
                   Add Your First Pig
                 </ThemedText>
-              </Link>
+            </Link>
             )}
           </ThemedView>
         ) : (
@@ -530,5 +636,22 @@ const styles = StyleSheet.create({
   },
   notMonitoredText: {
     color: '#FF453A',
+  },
+  monitoringInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 4,
+  },
+  monitoringTimeText: {
+    fontSize: 12,
+    color: '#8E8E93',
+  },
+  pigCardDisabled: {
+    opacity: 0.6,
+    pointerEvents: 'none',
+  },
+  nextMonitoringText: {
+    color: '#FF9500',
   },
 });

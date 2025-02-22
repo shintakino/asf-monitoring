@@ -22,7 +22,9 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         // Enable WAL mode and foreign keys
         await db.execAsync('PRAGMA journal_mode = WAL');
         await db.execAsync('PRAGMA foreign_keys = ON');
-
+        await db.execAsync('DELETE FROM monitoring_records');
+        await db.execAsync('DELETE FROM checklist_records');
+        await db.execAsync('DROP TABLE IF EXISTS Settings');
         // Create Breeds table
         await db.execAsync(`
           CREATE TABLE IF NOT EXISTS Breeds (
@@ -66,6 +68,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
             pig_id INTEGER NOT NULL,
             temperature REAL NOT NULL,
             date DATE NOT NULL,
+            time TIME NOT NULL,
             notes TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (pig_id) REFERENCES Pigs(id) ON DELETE CASCADE
@@ -82,6 +85,20 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
             FOREIGN KEY (monitoring_id) REFERENCES monitoring_records(id) ON DELETE CASCADE,
             FOREIGN KEY (checklist_id) REFERENCES Checklist(id) ON DELETE CASCADE
           )
+        `);
+
+        // Create Settings table
+        await db.execAsync(`          CREATE TABLE IF NOT EXISTS Settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reminder_notifications BOOLEAN NOT NULL DEFAULT 1,
+            checklist_items TEXT,
+            breed_data TEXT,
+            monitoring_start_time TEXT NOT NULL DEFAULT '08:00'
+          );
+          
+          -- Insert default settings if not exists
+          INSERT OR IGNORE INTO Settings (id, monitoring_start_time) 
+          VALUES (1, '08:00');
         `);
 
         // Create indexes for better performance
