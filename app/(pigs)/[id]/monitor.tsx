@@ -19,6 +19,11 @@ export default function MonitorPigScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [pendingRecord, setPendingRecord] = useState<{
+    temperature: number;
+    checklistItems: Record<number, boolean>;
+    notes: string;
+  } | null>(null);
 
   const [form, setForm] = useState({
     temperature: '',
@@ -39,7 +44,7 @@ export default function MonitorPigScreen() {
     return '';
   };
 
-  const handleSubmit = async () => {
+  const handleSubmitRequest = async () => {
     const tempError = validateTemperature(form.temperature);
     if (tempError) {
       setFormErrors(prev => ({ ...prev, temperature: tempError }));
@@ -47,18 +52,39 @@ export default function MonitorPigScreen() {
     }
 
     try {
-      setIsSubmitting(true);
       setError(null);
+      setIsSubmitting(true);
+
+      // Store the pending record
+      setPendingRecord({
+        temperature: parseFloat(form.temperature),
+        checklistItems: form.checklist,
+        notes: form.notes
+      });
+      setShowConfirm(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to validate monitoring');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitConfirm = async () => {
+    if (!pendingRecord) return;
+    
+    try {
+      setIsSubmitting(true);
       await addRecord(
-        parseFloat(form.temperature),
-        form.checklist,
-        form.notes
+        pendingRecord.temperature,
+        pendingRecord.checklistItems,
+        pendingRecord.notes
       );
       router.back();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save monitoring data');
+      setError(e instanceof Error ? e.message : 'Failed to add monitoring record');
     } finally {
       setIsSubmitting(false);
+      setShowConfirm(false);
     }
   };
 
@@ -163,7 +189,7 @@ export default function MonitorPigScreen() {
                 styles.submitButton,
                 (!form.temperature || isSubmitting) && styles.submitButtonDisabled
               ]}
-              onTouchEnd={handleSubmit}
+              onTouchEnd={handleSubmitRequest}
             >
               {isSubmitting ? (
                 <ActivityIndicator color="#FFFFFF" />
@@ -198,9 +224,11 @@ export default function MonitorPigScreen() {
 
       {showConfirm && (
         <ConfirmDialog
-          title="Confirm Submission"
-          message="Are you sure you want to save this monitoring data?"
-          onConfirm={handleSubmit}
+          title="Add Monitoring Record"
+          message="Are you sure you want to submit this monitoring record?"
+          icon="thermometer"
+          iconColor="#FF9500"
+          onConfirm={handleSubmitConfirm}
           onCancel={() => setShowConfirm(false)}
         />
       )}

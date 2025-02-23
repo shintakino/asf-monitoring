@@ -33,9 +33,39 @@ export default function DashboardScreen() {
   ).length;
   const notMonitoredCount = pigs.length - monitoredCount;
 
-  // Add filtered pigs calculation
+  // Add this sorting function
+  const sortPigs = (pigs: Pig[]) => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    return pigs.sort((a, b) => {
+      const timingA = calculateMonitoringTiming(
+        a.lastMonitoredTime && a.lastMonitoredDate === today ? a.lastMonitoredTime : null,
+        settings?.monitoring_start_time || '08:00'
+      );
+      const timingB = calculateMonitoringTiming(
+        b.lastMonitoredTime && b.lastMonitoredDate === today ? b.lastMonitoredTime : null,
+        settings?.monitoring_start_time || '08:00'
+      );
+
+      // First priority: Ready for monitoring
+      if (timingA.canMonitor && !timingB.canMonitor) return -1;
+      if (!timingA.canMonitor && timingB.canMonitor) return 1;
+
+      // Second priority: Next monitoring time
+      if (timingA.timeRemaining && timingB.timeRemaining) {
+        const timeA = new Date(`2000/01/01 ${timingA.nextMonitoringTime}`).getTime();
+        const timeB = new Date(`2000/01/01 ${timingB.nextMonitoringTime}`).getTime();
+        return timeA - timeB;
+      }
+
+      // Keep original order for other cases
+      return 0;
+    });
+  };
+
+  // Update the filteredPigs calculation
   const filteredPigs = useMemo(() => {
-    return pigs.filter(pig => {
+    const filtered = pigs.filter(pig => {
       const isMonitored = pig.lastMonitoredDate === today;
       switch (filterStatus) {
         case 'Monitored':
@@ -46,7 +76,9 @@ export default function DashboardScreen() {
           return true;
       }
     });
-  }, [pigs, filterStatus, today]);
+
+    return sortPigs(filtered);
+  }, [pigs, filterStatus, today, settings?.monitoring_start_time]);
 
   const renderPigCard = (pig: Pig) => {
     const today = new Date().toISOString().split('T')[0];
@@ -100,16 +132,16 @@ export default function DashboardScreen() {
               </ThemedView>
               <ThemedView style={styles.monitoringInfo}>
                 {monitoringTiming.lastMonitoredTime ? (
-                  <>
+                  <ThemedView style={styles.monitoringTimeContainer}>
                     <ThemedText style={styles.monitoringTimeText}>
-                      Last: {monitoringTiming.lastMonitoredTime}
+                      Last monitored: {monitoringTiming.lastMonitoredTime}
                     </ThemedText>
                     {monitoringTiming.timeRemaining && (
-                      <ThemedText style={styles.monitoringTimeText}>
-                        Next in: {monitoringTiming.timeRemaining}
+                      <ThemedText style={[styles.monitoringTimeText, styles.nextMonitoringText]}>
+                        Next monitoring in: {monitoringTiming.timeRemaining}
                       </ThemedText>
                     )}
-                  </>
+                  </ThemedView>
                 ) : (
                   <ThemedText style={styles.monitoringTimeText}>
                     {monitoringTiming.canMonitor ? 
@@ -177,16 +209,16 @@ export default function DashboardScreen() {
               </ThemedView>
               <ThemedView style={styles.monitoringInfo}>
                 {monitoringTiming.lastMonitoredTime ? (
-                  <>
+                  <ThemedView style={styles.monitoringTimeContainer}>
                     <ThemedText style={styles.monitoringTimeText}>
-                      Last: {monitoringTiming.lastMonitoredTime}
+                      Last monitored: {monitoringTiming.lastMonitoredTime}
                     </ThemedText>
                     {monitoringTiming.timeRemaining && (
                       <ThemedText style={[styles.monitoringTimeText, styles.nextMonitoringText]}>
                         Next monitoring in: {monitoringTiming.timeRemaining}
                       </ThemedText>
                     )}
-                  </>
+                  </ThemedView>
                 ) : (
                   <ThemedText style={styles.monitoringTimeText}>
                     Starts at {monitoringTiming.nextMonitoringTime}
@@ -638,10 +670,10 @@ const styles = StyleSheet.create({
     color: '#FF453A',
   },
   monitoringInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     marginTop: 4,
+  },
+  monitoringTimeContainer: {
+    gap: 4,  // This creates vertical spacing between the lines
   },
   monitoringTimeText: {
     fontSize: 12,

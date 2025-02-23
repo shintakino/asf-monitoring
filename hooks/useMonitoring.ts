@@ -37,10 +37,10 @@ export function useMonitoring(pigId?: number) {
     try {
       setError(null);
       
-      // Insert monitoring record with notes
+      // Insert monitoring record using only created_at for timestamp
       const result = await db.runAsync(
-        `INSERT INTO monitoring_records (pig_id, temperature, date, notes) 
-         VALUES (?, ?, date('now'), ?)`,
+        `INSERT INTO monitoring_records (pig_id, temperature, date, notes, created_at) 
+         VALUES (?, ?, date('now'), ?, datetime('now', 'localtime'))`,
         [pigId, temperature, notes || null]
       );
 
