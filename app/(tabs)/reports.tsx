@@ -7,11 +7,14 @@ import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { usePigs } from '@/hooks/usePigs';
 import type { Pig } from '@/utils/database';
+import { Link } from 'expo-router';
+import { useMonitoring } from '@/hooks/useMonitoring';
 
 type ReportFilter = 'All' | 'High Risk' | 'Moderate' | 'Healthy';
 
 export default function ReportsScreen() {
   const { pigs, isLoading, error, refreshPigs } = usePigs();
+  const { checklistRecords } = useMonitoring();
   const [filterStatus, setFilterStatus] = useState<ReportFilter>('All');
 
   useFocusEffect(
@@ -21,14 +24,14 @@ export default function ReportsScreen() {
   );
 
   const renderHeader = () => (
-    <ThemedView style={styles.headerContent}>
-      <Image 
-        source={require('@/assets/images/pig.png')}
-        style={styles.headerIcon}
-      />
-      <ThemedView style={styles.headerTextContainer}>
+        <ThemedView style={styles.headerContent}>
+          <Image 
+            source={require('@/assets/images/pig.png')}
+            style={styles.headerIcon}
+          />
+          <ThemedView style={styles.headerTextContainer}>
         <ThemedText style={styles.headerTitle}>Reports</ThemedText>
-        <ThemedText style={styles.headerSubtitle}>
+            <ThemedText style={styles.headerSubtitle}>
           View health monitoring reports
         </ThemedText>
       </ThemedView>
@@ -58,60 +61,69 @@ export default function ReportsScreen() {
   );
 
   const renderPigHealthCard = (pig: Pig) => {
-    const symptomsCount = 2;
+    const symptomsCount = checklistRecords?.filter(r => r.checked).length || 0;
 
     return (
-      <ThemedView key={pig.id} style={styles.healthCard}>
-        <ThemedView style={styles.healthCardHeader}>
-          <ThemedView style={styles.pigBasicInfo}>
-            <ThemedView style={styles.pigImageContainer}>
-              {pig.image ? (
-                <Image source={{ uri: pig.image }} style={styles.pigImage} />
-              ) : (
-                <ThemedView style={styles.pigImagePlaceholder}>
-                  <ThemedText style={styles.pigImageInitial}>
-                    {pig.name.charAt(0).toUpperCase()}
-                  </ThemedText>
-                </ThemedView>
-              )}
+      <Link
+        href={{
+          pathname: "/(pigs)/[id]/report" as const,
+          params: { id: pig.id }
+        }}
+        key={pig.id}
+        style={styles.healthCardLink}
+      >
+        <ThemedView style={styles.healthCard}>
+          <ThemedView style={styles.healthCardHeader}>
+            <ThemedView style={styles.pigBasicInfo}>
+              <ThemedView style={styles.pigImageContainer}>
+                {pig.image ? (
+                  <Image source={{ uri: pig.image }} style={styles.pigImage} />
+                ) : (
+                  <ThemedView style={styles.pigImagePlaceholder}>
+                    <ThemedText style={styles.pigImageInitial}>
+                      {pig.name.charAt(0).toUpperCase()}
+                    </ThemedText>
+                  </ThemedView>
+                )}
+              </ThemedView>
+              <ThemedView>
+                <ThemedText style={styles.pigName}>{pig.name}</ThemedText>
+                <ThemedText style={styles.pigBreed}>{pig.breed_name}</ThemedText>
+              </ThemedView>
             </ThemedView>
-            <ThemedView>
-              <ThemedText style={styles.pigName}>{pig.name}</ThemedText>
-              <ThemedText style={styles.pigBreed}>{pig.breed_name}</ThemedText>
-            </ThemedView>
-          </ThemedView>
-          <ThemedView style={[styles.riskBadge, styles.moderateRisk]}>
-            <IconSymbol name="exclamationmark.triangle.fill" size={16} color="#FF9500" />
-            <ThemedText style={styles.riskText}>Moderate Risk</ThemedText>
-          </ThemedView>
-        </ThemedView>
-
-        <ThemedView style={styles.healthDetails}>
-          <ThemedView style={styles.temperatureRow}>
-            <ThemedText style={styles.detailLabel}>Last Temperature</ThemedText>
-            <ThemedText style={styles.temperatureValue}>39.5°C</ThemedText>
-          </ThemedView>
-          
-          <ThemedView style={styles.detailRow}>
-            <ThemedText style={styles.detailLabel}>Symptoms Found</ThemedText>
-            <ThemedView style={styles.symptomsCount}>
-              <ThemedText style={styles.detailValue}>
-                {symptomsCount} {symptomsCount === 1 ? 'Symptom' : 'Symptoms'}
-              </ThemedText>
-              <IconSymbol 
-                name="exclamationmark.circle.fill" 
-                size={16} 
-                color={symptomsCount > 0 ? '#FF453A' : '#30D158'} 
-              />
+            <ThemedView style={[styles.riskBadge, styles.moderateRisk]}>
+              <IconSymbol name="exclamationmark.triangle.fill" size={16} color="#FF9500" />
+              <ThemedText style={styles.riskText}>Moderate Risk</ThemedText>
             </ThemedView>
           </ThemedView>
 
-          <ThemedView style={styles.detailRow}>
-            <ThemedText style={styles.detailLabel}>Last Monitored</ThemedText>
-            <ThemedText style={styles.detailValue}>Today at 8:30 AM</ThemedText>
+          <ThemedView style={styles.healthDetails}>
+            <ThemedView style={styles.temperatureRow}>
+              <ThemedText style={styles.detailLabel}>Last Temperature</ThemedText>
+              <ThemedText style={styles.temperatureValue}>39.5°C</ThemedText>
+            </ThemedView>
+            
+            <ThemedView style={styles.detailRow}>
+              <ThemedText style={styles.detailLabel}>Symptoms Found:</ThemedText>
+              <ThemedView style={styles.symptomsCount}>
+                <ThemedText style={styles.detailValue}>
+                  {symptomsCount} {symptomsCount === 1 ? 'Symptom' : 'Symptoms'}
+                </ThemedText>
+                <IconSymbol 
+                  name="exclamationmark.circle.fill" 
+                  size={16} 
+                  color={symptomsCount > 0 ? '#FF453A' : '#30D158'} 
+                />
+              </ThemedView>
+            </ThemedView>
+
+            <ThemedView style={styles.detailRow}>
+              <ThemedText style={styles.detailLabel}>Last Monitored</ThemedText>
+              <ThemedText style={styles.detailValue}>Today at 8:30 AM</ThemedText>
+            </ThemedView>
           </ThemedView>
         </ThemedView>
-      </ThemedView>
+      </Link>
     );
   };
 
@@ -212,7 +224,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(142, 142, 147, 0.08)',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
     gap: 16,
   },
   healthCardHeader: {
@@ -315,4 +326,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-});
+  healthCardLink: {
+    marginBottom: 12,
+  },
+}); 

@@ -5,6 +5,7 @@ import type { MonitoringRecord, ChecklistRecord } from '@/utils/database';
 export function useMonitoring(pigId?: number) {
   const db = useSQLiteContext();
   const [records, setRecords] = useState<MonitoringRecord[]>([]);
+  const [checklistRecords, setChecklistRecords] = useState<ChecklistRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -15,10 +16,27 @@ export function useMonitoring(pigId?: number) {
       setIsLoading(true);
       setError(null);
       const results = await db.getAllAsync<MonitoringRecord>(
-        `SELECT * FROM monitoring_records WHERE pig_id = ? ORDER BY date DESC`,
+        `SELECT monitoring_records.*, checklist_records.checked, Checklist.risk_weight 
+         FROM monitoring_records 
+         LEFT JOIN checklist_records ON checklist_records.monitoring_id = monitoring_records.id
+         LEFT JOIN Checklist ON checklist_records.checklist_id = Checklist.id
+         WHERE pig_id = ? 
+         ORDER BY date DESC`,
         [pigId]
       );
       setRecords(results);
+
+      // Fetch checklist records
+      const checklistResults = await db.getAllAsync<ChecklistRecord>(
+        `SELECT cr.*, c.symptom, c.risk_weight, c.treatment_recommendation 
+         FROM checklist_records cr
+         JOIN Checklist c ON cr.checklist_id = c.id
+         WHERE cr.monitoring_id IN (
+           SELECT id FROM monitoring_records WHERE pig_id = ?
+         )`,
+        [pigId]
+      );
+      setChecklistRecords(checklistResults);
     } catch (e) {
       console.error('Error fetching monitoring records:', e);
       setError(e instanceof Error ? e : new Error('Failed to fetch records'));
@@ -67,6 +85,7 @@ export function useMonitoring(pigId?: number) {
 
   return {
     records,
+    checklistRecords,
     isLoading,
     error,
     addRecord,

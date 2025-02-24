@@ -182,6 +182,9 @@ export interface ChecklistRecord {
   monitoring_id: number;
   checklist_id: number;
   checked: boolean;
+  risk_weight: number;
+  symptom: string;
+  treatment_recommendation: string;
 }
 
 // Add this helper type
