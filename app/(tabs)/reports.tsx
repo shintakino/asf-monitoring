@@ -6,22 +6,54 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { usePigs } from '@/hooks/usePigs';
+import { useBreeds } from '@/hooks/useBreeds';
 import type { Pig } from '@/utils/database';
 import { Link } from 'expo-router';
 import { useMonitoring } from '@/hooks/useMonitoring';
+import { calculateRiskLevel, getRiskColor } from '@/utils/risk';
+import moment from 'moment';
 
 type ReportFilter = 'All' | 'High Risk' | 'Moderate' | 'Healthy';
 
 export default function ReportsScreen() {
-  const { pigs, isLoading, error, refreshPigs } = usePigs();
-  const { checklistRecords } = useMonitoring();
+  const { pigs, isLoading: pigsLoading, error: pigsError, refreshPigs } = usePigs();
+  const { breeds } = useBreeds();
+  const { records, checklistRecords, refreshRecords } = useMonitoring();
   const [filterStatus, setFilterStatus] = useState<ReportFilter>('All');
 
   useFocusEffect(
     useCallback(() => {
-      refreshPigs();
-    }, [refreshPigs])
+      const refreshData = async () => {
+        await Promise.all([
+          refreshPigs(),
+          refreshRecords(),
+        ]);
+      };
+      refreshData();
+    }, [refreshPigs, refreshRecords])
   );
+
+  // Filter pigs based on their risk level
+  const filteredPigs = pigs.filter(pig => {
+    if (filterStatus === 'All') return true;
+    
+    const breed = breeds.find(b => b.id === pig.breed_id);
+    if (!breed) return false;
+
+    const pigRecords = records?.filter(r => r.pig_id === pig.id) || [];
+    const pigChecklistRecords = checklistRecords?.filter(r => 
+      pigRecords.some(pr => pr.id === r.monitoring_id)
+    ) || [];
+
+    const riskAnalysis = calculateRiskLevel(pigRecords, pigChecklistRecords, breed, pig.category);
+    
+    switch (filterStatus) {
+      case 'High Risk': return riskAnalysis.riskLevel === 'High';
+      case 'Moderate': return riskAnalysis.riskLevel === 'Moderate';
+      case 'Healthy': return riskAnalysis.riskLevel === 'Low';
+      default: return true;
+    }
+  });
 
   const renderHeader = () => (
         <ThemedView style={styles.headerContent}>
@@ -61,7 +93,20 @@ export default function ReportsScreen() {
   );
 
   const renderPigHealthCard = (pig: Pig) => {
-    const symptomsCount = checklistRecords?.filter(r => r.checked).length || 0;
+    const breed = breeds.find(b => b.id === pig.breed_id);
+    if (!breed) return null;
+
+    // Get pig-specific records
+    const pigRecords = records?.filter(r => r.pig_id === pig.id) || [];
+    const latestRecord = pigRecords[0];
+    
+    const pigChecklistRecords = checklistRecords?.filter(r => 
+      pigRecords.some(pr => pr.id === r.monitoring_id)
+    ) || [];
+
+    const symptomsCount = pigChecklistRecords.filter(r => r.checked).length;
+    const riskAnalysis = calculateRiskLevel(pigRecords, pigChecklistRecords, breed, pig.category);
+    const riskColor = getRiskColor(riskAnalysis.riskLevel);
 
     return (
       <Link
@@ -88,19 +133,35 @@ export default function ReportsScreen() {
               </ThemedView>
               <ThemedView>
                 <ThemedText style={styles.pigName}>{pig.name}</ThemedText>
-                <ThemedText style={styles.pigBreed}>{pig.breed_name}</ThemedText>
+                <ThemedText style={styles.pigBreed}>{breed.name}</ThemedText>
               </ThemedView>
             </ThemedView>
-            <ThemedView style={[styles.riskBadge, styles.moderateRisk]}>
-              <IconSymbol name="exclamationmark.triangle.fill" size={16} color="#FF9500" />
-              <ThemedText style={styles.riskText}>Moderate Risk</ThemedText>
+            <ThemedView style={[
+              styles.riskBadge,
+              riskAnalysis.riskLevel === 'High' ? styles.highRisk :
+              riskAnalysis.riskLevel === 'Moderate' ? styles.moderateRisk :
+              styles.healthy
+            ]}>
+              <IconSymbol 
+                name={riskAnalysis.riskLevel === 'Low' ? 'checkmark.circle.fill' : 'exclamationmark.triangle.fill'} 
+                size={16} 
+                color={riskColor} 
+              />
+              <ThemedText style={[styles.riskText, { color: riskColor }]}>
+                {riskAnalysis.riskLevel} Risk
+              </ThemedText>
             </ThemedView>
           </ThemedView>
 
           <ThemedView style={styles.healthDetails}>
             <ThemedView style={styles.temperatureRow}>
               <ThemedText style={styles.detailLabel}>Last Temperature</ThemedText>
-              <ThemedText style={styles.temperatureValue}>39.5°C</ThemedText>
+              <ThemedText style={[
+                styles.temperatureValue,
+                { color: latestRecord ? getRiskColor(riskAnalysis.riskLevel) : '#8E8E93' }
+              ]}>
+                {latestRecord ? `${latestRecord.temperature}°C` : 'N/A'}
+              </ThemedText>
             </ThemedView>
             
             <ThemedView style={styles.detailRow}>
@@ -119,7 +180,9 @@ export default function ReportsScreen() {
 
             <ThemedView style={styles.detailRow}>
               <ThemedText style={styles.detailLabel}>Last Monitored</ThemedText>
-              <ThemedText style={styles.detailValue}>Today at 8:30 AM</ThemedText>
+              <ThemedText style={styles.detailValue}>
+                {latestRecord ? moment(latestRecord.date).format('MMM D, YYYY') : 'Never'}
+              </ThemedText>
             </ThemedView>
           </ThemedView>
         </ThemedView>
@@ -135,7 +198,7 @@ export default function ReportsScreen() {
       <ThemedView style={styles.container}>
         {renderFilterChips()}
         <ScrollView style={styles.healthCardsList}>
-          {pigs.map(renderPigHealthCard)}
+          {filteredPigs.map(renderPigHealthCard)}
         </ScrollView>
       </ThemedView>
     </ParallaxScrollView>

@@ -10,31 +10,45 @@ export function useMonitoring(pigId?: number) {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchRecords = useCallback(async () => {
-    if (!pigId) return;
-    
     try {
       setIsLoading(true);
       setError(null);
+      
+      // If pigId is provided, fetch records for specific pig
+      const recordsQuery = pigId 
+        ? `SELECT monitoring_records.*, checklist_records.checked, Checklist.risk_weight 
+           FROM monitoring_records 
+           LEFT JOIN checklist_records ON checklist_records.monitoring_id = monitoring_records.id
+           LEFT JOIN Checklist ON checklist_records.checklist_id = Checklist.id
+           WHERE pig_id = ? 
+           ORDER BY date DESC`
+        : `SELECT monitoring_records.*, checklist_records.checked, Checklist.risk_weight 
+           FROM monitoring_records 
+           LEFT JOIN checklist_records ON checklist_records.monitoring_id = monitoring_records.id
+           LEFT JOIN Checklist ON checklist_records.checklist_id = Checklist.id
+           ORDER BY date DESC`;
+
       const results = await db.getAllAsync<MonitoringRecord>(
-        `SELECT monitoring_records.*, checklist_records.checked, Checklist.risk_weight 
-         FROM monitoring_records 
-         LEFT JOIN checklist_records ON checklist_records.monitoring_id = monitoring_records.id
-         LEFT JOIN Checklist ON checklist_records.checklist_id = Checklist.id
-         WHERE pig_id = ? 
-         ORDER BY date DESC`,
-        [pigId]
+        recordsQuery,
+        pigId ? [pigId] : []
       );
       setRecords(results);
 
       // Fetch checklist records
+      const checklistQuery = pigId
+        ? `SELECT cr.*, c.symptom, c.risk_weight, c.treatment_recommendation 
+           FROM checklist_records cr
+           JOIN Checklist c ON cr.checklist_id = c.id
+           WHERE cr.monitoring_id IN (
+             SELECT id FROM monitoring_records WHERE pig_id = ?
+           )`
+        : `SELECT cr.*, c.symptom, c.risk_weight, c.treatment_recommendation 
+           FROM checklist_records cr
+           JOIN Checklist c ON cr.checklist_id = c.id`;
+
       const checklistResults = await db.getAllAsync<ChecklistRecord>(
-        `SELECT cr.*, c.symptom, c.risk_weight, c.treatment_recommendation 
-         FROM checklist_records cr
-         JOIN Checklist c ON cr.checklist_id = c.id
-         WHERE cr.monitoring_id IN (
-           SELECT id FROM monitoring_records WHERE pig_id = ?
-         )`,
-        [pigId]
+        checklistQuery,
+        pigId ? [pigId] : []
       );
       setChecklistRecords(checklistResults);
     } catch (e) {
@@ -79,6 +93,7 @@ export function useMonitoring(pigId?: number) {
     }
   }, [db, pigId, fetchRecords]);
 
+  // Initial load
   useEffect(() => {
     fetchRecords();
   }, [fetchRecords]);
