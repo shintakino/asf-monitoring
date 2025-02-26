@@ -8,6 +8,14 @@ export function usePigs() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  const validateBreedExists = useCallback(async (breedId: number) => {
+    const result = await db.getAllAsync<{count: number}>(
+      'SELECT COUNT(*) as count FROM Breeds WHERE id = ?',
+      [breedId]
+    );
+    return result[0].count > 0;
+  }, [db]);
+
   // Fetch all pigs
   const fetchPigs = useCallback(async () => {
     try {
@@ -52,8 +60,13 @@ export function usePigs() {
   }, [fetchPigs]);
 
   // Add new pig
-  const addPig = useCallback(async (pig: Omit<Pig, 'id' | 'breed_name'>) => {
+  const addPig = useCallback(async (pig: Omit<Pig, 'id'>) => {
     try {
+      // Validate required data is available offline
+      if (!pig.breed_id || !await validateBreedExists(pig.breed_id)) {
+        throw new Error('Required breed data not available offline');
+      }
+      // Proceed with add operation
       console.log('Adding new pig:', pig);
       setError(null);
       const result = await db.runAsync(
@@ -72,9 +85,10 @@ export function usePigs() {
       console.log('Pig added successfully:', result);
       await fetchPigs();
       return result.lastInsertRowId;
-    } catch (e) {
-      console.error('Error adding pig:', e);
-      const error = e instanceof Error ? e : new Error('Failed to add pig');
+    } catch (err) {
+      // Handle offline errors
+      console.error('Error adding pig:', err);
+      const error = err instanceof Error ? err : new Error('Failed to add pig');
       setError(error);
       throw error;
     }

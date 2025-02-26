@@ -194,4 +194,15 @@ export interface MonitoringTiming {
   nextMonitoringTime?: string | null;
   canMonitor: boolean;
   timeRemaining?: string | null;
+}
+
+export async function checkDatabaseHealth() {
+  try {
+    const db = await SQLite.openDatabaseAsync('asf_monitor.db');
+    await db.execAsync('SELECT 1');
+    return true;
+  } catch (error) {
+    console.error('Database health check failed:', error);
+    return false;
+  }
 } 
