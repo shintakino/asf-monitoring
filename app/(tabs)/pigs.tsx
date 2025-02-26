@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useCallback } from 'react';
 import { StyleSheet, Dimensions, Image, TextInput, ActivityIndicator, ScrollView } from 'react-native';
 import { Link } from 'expo-router';

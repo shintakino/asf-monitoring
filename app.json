@@ -17,16 +17,15 @@
       "buildNumber": "1.0.0"
     },
     "android": {
-      "package": "com.magpet.asfmonitor",
-      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -37,35 +36,38 @@
     "plugins": [
       "expo-router",
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      [
         "expo-sqlite",
         {
-          "databaseName": "asf_monitor.db"
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "The app needs access to your photos to set pig profile images."
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/notification-icon.png",
-          "color": "#ffffff"
+          "enableFTS": true,
+          "useSQLCipher": true,
+          "android": {
+            "enableFTS": false,
+            "useSQLCipher": false
+          },
+          "ios": {
+            "customBuildFlags": ["-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1"]
+          }
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
     },
-    "updates": {
-      "fallbackToCacheTimeout": 0,
-      "enabled": true
-    },
     "extra": {
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "739725b9-c5d6-42d7-aa4a-8e7e1c1f0775"
+      },
+      "router": {
+        "origin": false
       }
     }
   }

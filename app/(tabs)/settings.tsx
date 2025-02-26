@@ -74,7 +74,7 @@ export default function SettingsScreen() {
               Notifications
             </ThemedText>
           </ThemedView>
-          <Link href="/(settings)/notifications" style={styles.menuItem}>
+          <Link href="/" style={styles.menuItem}>
             <ThemedView style={styles.menuItemContent}>
               <ThemedText style={styles.menuItemText}>
                 Configure Reminders

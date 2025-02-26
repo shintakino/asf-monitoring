@@ -2,35 +2,56 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { DatabaseProvider } from '@/contexts/DatabaseContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { SQLiteProvider } from 'expo-sqlite';
+import * as SQLite from 'expo-sqlite';
+import { View, ActivityIndicator } from 'react-native';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const [isReady, setIsReady] = useState(false);
+  const [dbInitialized, setDbInitialized] = useState(false);
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
   useEffect(() => {
-  }, [loaded]);
+    async function initDB() {
+      try {
+        const db = await SQLite.openDatabaseAsync('asf_monitor.db');
+        await db.execAsync('PRAGMA journal_mode = WAL');
+        await db.execAsync('PRAGMA foreign_keys = ON');
+        setDbInitialized(true);
+      } catch (error) {
+        console.error('Failed to initialize database:', error);
+      }
+    }
 
-  if (!loaded) {
-    return null;
+    if (loaded && !dbInitialized) {
+      initDB();
+    } else if (loaded && dbInitialized) {
+      setIsReady(true);
+    }
+  }, [loaded, dbInitialized]);
+
+  if (!isReady) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
   }
 
   return (
-    <SQLiteProvider databaseName="asf_monitor.db">
-      <DatabaseProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </DatabaseProvider>
-    </SQLiteProvider>
+    <DatabaseProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </DatabaseProvider>
   );
 }

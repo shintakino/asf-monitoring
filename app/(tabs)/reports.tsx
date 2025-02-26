@@ -1,5 +1,6 @@
+import React from 'react';
 import { useState, useCallback } from 'react';
-import { StyleSheet, Dimensions, Image, ScrollView } from 'react-native';
+import { StyleSheet, Dimensions, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
@@ -11,7 +12,7 @@ import type { Pig } from '@/utils/database';
 import { Link } from 'expo-router';
 import { useMonitoring } from '@/hooks/useMonitoring';
 import { calculateRiskLevel, getRiskColor } from '@/utils/risk';
-import moment from 'moment';
+import { format, parseISO } from 'date-fns';
 
 type ReportFilter = 'All' | 'High Risk' | 'Moderate' | 'Healthy';
 
@@ -21,17 +22,75 @@ export default function ReportsScreen() {
   const { records, checklistRecords, refreshRecords } = useMonitoring();
   const [filterStatus, setFilterStatus] = useState<ReportFilter>('All');
 
+  const renderHeader = () => (
+    <ThemedView style={styles.headerContent}>
+      <Image 
+        source={require('@/assets/images/pig.png')}
+        style={styles.headerIcon}
+      />
+      <ThemedView style={styles.headerTextContainer}>
+        <ThemedText style={styles.headerTitle}>Reports</ThemedText>
+        <ThemedText style={styles.headerSubtitle}>
+          View health monitoring reports
+        </ThemedText>
+      </ThemedView>
+      <ThemedView style={styles.headerBadge}>
+        <IconSymbol name="chart.bar.fill" size={16} color="#007AFF" />
+        <ThemedText style={styles.headerBadgeText}>Health Analytics</ThemedText>
+      </ThemedView>
+    </ThemedView>
+  );
+
   useFocusEffect(
     useCallback(() => {
       const refreshData = async () => {
+        console.log('Refreshing data...');
         await Promise.all([
           refreshPigs(),
           refreshRecords(),
         ]);
+        console.log('Pigs:', pigs.length);
+        console.log('Records:', records?.length);
+        console.log('Breeds:', breeds.length);
       };
       refreshData();
     }, [refreshPigs, refreshRecords])
   );
+
+  // Add loading state handling
+  if (pigsLoading) {
+    return (
+      <ThemedView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </ThemedView>
+    );
+  }
+
+  // Add error state handling
+  if (pigsError) {
+    return (
+      <ThemedView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ThemedText style={{ color: 'red' }}>Error loading pigs: {pigsError.message}</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  // Add empty state handling
+  if (pigs.length === 0) {
+    return (
+      <ParallaxScrollView
+        headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
+        headerImage={renderHeader()}
+      >
+        <ThemedView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ThemedText style={styles.emptyText}>No pigs found. Add some pigs to see their health reports.</ThemedText>
+          <Link href="/(pigs)/new" style={styles.addButton}>
+            <ThemedText style={styles.addButtonText}>Add New Pig</ThemedText>
+          </Link>
+        </ThemedView>
+      </ParallaxScrollView>
+    );
+  }
 
   // Filter pigs based on their risk level
   const filteredPigs = pigs.filter(pig => {
@@ -54,25 +113,6 @@ export default function ReportsScreen() {
       default: return true;
     }
   });
-
-  const renderHeader = () => (
-        <ThemedView style={styles.headerContent}>
-          <Image 
-            source={require('@/assets/images/pig.png')}
-            style={styles.headerIcon}
-          />
-          <ThemedView style={styles.headerTextContainer}>
-        <ThemedText style={styles.headerTitle}>Reports</ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-          View health monitoring reports
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.headerBadge}>
-        <IconSymbol name="chart.bar.fill" size={16} color="#007AFF" />
-        <ThemedText style={styles.headerBadgeText}>Health Analytics</ThemedText>
-      </ThemedView>
-    </ThemedView>
-  );
 
   const renderFilterChips = () => (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterContainer}>
@@ -181,7 +221,7 @@ export default function ReportsScreen() {
             <ThemedView style={styles.detailRow}>
               <ThemedText style={styles.detailLabel}>Last Monitored</ThemedText>
               <ThemedText style={styles.detailValue}>
-                {latestRecord ? moment(latestRecord.date).format('MMM D, YYYY') : 'Never'}
+                {latestRecord ? format(parseISO(latestRecord.date), 'MMM d, yyyy') : 'Never'}
               </ThemedText>
             </ThemedView>
           </ThemedView>
@@ -391,5 +431,22 @@ const styles = StyleSheet.create({
   },
   healthCardLink: {
     marginBottom: 12,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+    color: '#8E8E93',
+  },
+  addButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  addButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 }); 

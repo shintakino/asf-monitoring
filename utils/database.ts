@@ -9,8 +9,17 @@ export async function initDatabase() {
   await db.execAsync('PRAGMA journal_mode = WAL');
   await db.execAsync('PRAGMA foreign_keys = ON');
 
-  // Drop existing table to recreate with new schema
-  await db.execAsync('DROP TABLE IF EXISTS Breeds');
+  // Drop all existing tables
+  await db.execAsync(`
+    DROP TABLE IF EXISTS ChecklistResults;
+    DROP TABLE IF EXISTS checklist_records;
+    DROP TABLE IF EXISTS monitoring_records;
+    DROP TABLE IF EXISTS DailyMonitoring;
+    DROP TABLE IF EXISTS Checklist;
+    DROP TABLE IF EXISTS Pigs;
+    DROP TABLE IF EXISTS Breeds;
+    DROP TABLE IF EXISTS Settings;
+  `);
 
   // Initialize database tables with new schema
   await db.execAsync(`
@@ -31,16 +40,18 @@ export async function initDatabase() {
       category TEXT CHECK(category IN ('Adult', 'Young')) NOT NULL,
       breed_id INTEGER NOT NULL,
       image TEXT,
-      prone_level TEXT CHECK(prone_level IN ('Low', 'Moderate', 'High')) NOT NULL,
+      prone_level TEXT CHECK(prone_level IN ('Low', 'Moderate', 'High')) ,
       FOREIGN KEY (breed_id) REFERENCES Breeds(id) ON DELETE CASCADE
     );
 
-    CREATE TABLE IF NOT EXISTS DailyMonitoring (
+    CREATE TABLE IF NOT EXISTS monitoring_records (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       pig_id INTEGER NOT NULL,
-      date DATE NOT NULL,
       temperature REAL NOT NULL,
-      checklist_results TEXT NOT NULL,
+      date DATE NOT NULL,
+      time TIME NOT NULL DEFAULT (strftime('%H:%M', 'now', 'localtime')),
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (pig_id) REFERENCES Pigs(id) ON DELETE CASCADE
     );
 
@@ -49,34 +60,6 @@ export async function initDatabase() {
       symptom TEXT NOT NULL,
       risk_weight INTEGER NOT NULL CHECK(risk_weight BETWEEN 1 AND 5),
       treatment_recommendation TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS ChecklistResults (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      monitoring_id INTEGER NOT NULL,
-      checklist_id INTEGER NOT NULL,
-      checked BOOLEAN NOT NULL DEFAULT 0,
-      FOREIGN KEY (monitoring_id) REFERENCES DailyMonitoring(id) ON DELETE CASCADE,
-      FOREIGN KEY (checklist_id) REFERENCES Checklist(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS Settings (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      reminder_notifications BOOLEAN NOT NULL DEFAULT 1,
-      checklist_items TEXT,
-      breed_data TEXT,
-      monitoring_start_time TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS monitoring_records (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      pig_id INTEGER NOT NULL,
-      temperature REAL NOT NULL,
-      date DATE NOT NULL,
-      time TIME NOT NULL,
-      notes TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (pig_id) REFERENCES Pigs(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS checklist_records (
@@ -88,11 +71,23 @@ export async function initDatabase() {
       FOREIGN KEY (checklist_id) REFERENCES Checklist(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS Settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      reminder_notifications BOOLEAN NOT NULL DEFAULT 1,
+      checklist_items TEXT,
+      breed_data TEXT,
+      monitoring_start_time TEXT
+    );
+
     CREATE INDEX IF NOT EXISTS idx_pig_breed ON Pigs(breed_id);
-    CREATE INDEX IF NOT EXISTS idx_monitoring_pig ON DailyMonitoring(pig_id);
-    CREATE INDEX IF NOT EXISTS idx_checklist_results ON ChecklistResults(monitoring_id, checklist_id);
     CREATE INDEX IF NOT EXISTS idx_monitoring_pig ON monitoring_records(pig_id);
     CREATE INDEX IF NOT EXISTS idx_checklist_monitoring ON checklist_records(monitoring_id);
+  `);
+
+  // Insert default settings if needed
+  await db.execAsync(`
+    INSERT OR IGNORE INTO Settings (id, reminder_notifications, monitoring_start_time)
+    VALUES (1, 1, '08:00');
   `);
 
   return db;

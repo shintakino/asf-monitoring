@@ -1,3 +1,4 @@
+import React from 'react';
 import { StyleSheet, Dimensions, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { Link } from 'expo-router';
 import ParallaxScrollView from '@/components/ParallaxScrollView';

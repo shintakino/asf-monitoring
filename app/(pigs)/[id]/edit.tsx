@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { StyleSheet, TextInput, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';

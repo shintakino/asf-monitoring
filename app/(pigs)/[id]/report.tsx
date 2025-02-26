@@ -1,3 +1,4 @@
+import React from 'react';
 import { useEffect, useState } from 'react';
 import { StyleSheet, ScrollView, ActivityIndicator, Dimensions, TouchableOpacity, Image } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -9,7 +10,7 @@ import { useBreeds } from '@/hooks/useBreeds';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { calculateRiskLevel, getRiskColor } from '@/utils/risk';
 import { LineChart, BarChart } from 'react-native-chart-kit';
-import moment from 'moment'; 
+import { format, parseISO, subDays, differenceInDays } from 'date-fns';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg'; // Import SVG components
 
 export default function PigReportScreen() {
@@ -49,16 +50,16 @@ export default function PigReportScreen() {
   const labels = []; // Array to hold labels for the last 7 days
 
   // Get today's date and calculate the last 7 days
-  const today = moment();
+  const today = new Date();
   for (let i = 6; i >= 0; i--) {
-    const day = today.clone().subtract(i, 'days');
-    labels.push(day.format('ddd')); // Add day labels (Mon, Tue, etc.)
+    const day = subDays(today, i);
+    labels.push(format(day, 'EEE')); // Add day labels (Mon, Tue, etc.)
   }
 
   // Filter records for the last 7 days
   records.forEach(record => {
-    const recordDate = moment(record.date);
-    const dayIndex = today.diff(recordDate, 'days'); // Get the index for the last 7 days
+    const recordDate = parseISO(record.date);
+    const dayIndex = differenceInDays(today, recordDate);
     if (dayIndex >= 0 && dayIndex < 7) { // Only consider the last 7 days
       temperatureData[6 - dayIndex] = record.temperature; // Store temperature in the corresponding index
     }
@@ -80,8 +81,8 @@ export default function PigReportScreen() {
   const symptomSet = Array.from({ length: 7 }, () => new Set()); // Set to track unique symptoms
 
   records.forEach(record => {
-    const recordDate = moment(record.date);
-    const dayIndex = today.diff(recordDate, 'days'); // Get the index for the last 7 days
+    const recordDate = parseISO(record.date);
+    const dayIndex = differenceInDays(today, recordDate);
     if (dayIndex >= 0 && dayIndex < 7) { // Only consider the last 7 days
       const checkedSymptoms = checklistRecords.filter(cr => cr.monitoring_id === record.id && cr.checked);
       checkedSymptoms.forEach(symptom => symptomSet[6 - dayIndex].add(symptom.symptom)); // Store unique symptoms
