@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useCallback, useEffect } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import type { MonitoringRecord, ChecklistRecord } from '@/utils/database';

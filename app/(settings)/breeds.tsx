@@ -134,7 +134,12 @@ export default function BreedManagementScreen() {
                     </ThemedView>
                   </ThemedView>
                   <ThemedView style={styles.breedActions}>
-                    <Link href={`/(settings)/breeds/${breed.id}/edit`} style={styles.actionButton}>
+                    <Link 
+                    href={{
+                      pathname: "/(settings)/breeds/[id]/edit",
+                      params: { id: breed.id }
+                    }}  
+                    style={styles.actionButton}>
                       <MaterialIcons name="edit" size={20} color="#007AFF" />
                     </Link>
                     <ThemedView 

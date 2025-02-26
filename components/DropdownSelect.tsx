@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { StyleSheet, ScrollView, Animated, Easing } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';

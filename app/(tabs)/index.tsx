@@ -1,5 +1,5 @@
-import React from 'react';
 import { StyleSheet, Dimensions, Image, ScrollView, ActivityIndicator } from 'react-native';
+import React from 'react';
 import { Link } from 'expo-router';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';

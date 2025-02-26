@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useCallback } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import type { Settings } from '@/utils/database';

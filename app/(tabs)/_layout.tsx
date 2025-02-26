@@ -17,21 +17,21 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: '#8E8E93',
+        tabBarStyle: {
+          backgroundColor: '#F2F2F7',
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
+          ...Platform.select({
+            ios: {
+              position: 'absolute',
+            },
+            default: {},
+          }),
+        },
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            position: 'absolute',
-            backgroundColor: 'transparent',
-          },
-          default: {
-            backgroundColor: '#F2F2F7',
-            borderTopWidth: 0,
-            elevation: 0,
-            shadowOpacity: 0,
-          },
-        }),
       }}>
       <Tabs.Screen
         name="index"
