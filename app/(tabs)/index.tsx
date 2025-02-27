@@ -1,5 +1,5 @@
-import { StyleSheet, Dimensions, Image, ScrollView, ActivityIndicator } from 'react-native';
-import React from 'react';
+import { StyleSheet, Dimensions, Image, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useEffect } from 'react';
 import { Link } from 'expo-router';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
@@ -11,13 +11,23 @@ import { useCallback, useMemo, useState } from 'react';
 import { calculateMonitoringTiming } from '@/utils/monitoring';
 import type { Pig } from '@/utils/database';
 import { useSettings } from '@/hooks/useSettings';
+import { calculateRiskLevel, getRiskColor } from '@/utils/risk';
+import { useBreeds } from '@/hooks/useBreeds';
+import { useMonitoring } from '@/hooks/useMonitoring';
+import { Ionicons } from '@expo/vector-icons';
+import { registerForPushNotificationsAsync, scheduleRiskNotification } from '@/utils/notifications';
 
 // Add this type definition at the top with other types
 type MonitoringFilter = 'All' | 'Monitored' | 'Not Monitored';
 
+// Add this type definition at the top
+type RiskLevel = 'Low' | 'Moderate' | 'High';
+
 export default function DashboardScreen() {
   const { pigs, isLoading, error, refreshPigs } = usePigs();
   const { settings, refreshSettings } = useSettings();
+  const { breeds } = useBreeds();
+  const { records, checklistRecords } = useMonitoring();
   // Add state for filter
   const [filterStatus, setFilterStatus] = useState<MonitoringFilter>('All');
 
@@ -78,14 +88,149 @@ export default function DashboardScreen() {
       }
     });
 
-    return sortPigs(filtered);
-  }, [pigs, filterStatus, today, settings?.monitoring_start_time]);
+    // Calculate risk levels and sort by risk priority
+    const pigsWithRisk = filtered.map(pig => {
+      const breed = breeds.find(b => b.id === pig.breed_id);
+      if (!breed) return { ...pig, riskLevel: 'Low' as const };
+
+      const pigRecords = records?.filter(r => r.pig_id === pig.id) || [];
+      const pigChecklistRecords = checklistRecords?.filter(r => 
+        pigRecords.some(pr => pr.id === r.monitoring_id)
+      ) || [];
+
+      const riskAnalysis = calculateRiskLevel(pigRecords, pigChecklistRecords, breed, pig.category);
+      return { ...pig, riskLevel: riskAnalysis.riskLevel };
+    });
+
+    // Sort by risk level first, then by monitoring timing
+    return sortPigs(pigsWithRisk.sort((a, b) => {
+      const riskPriority = { High: 3, Moderate: 2, Low: 1 };
+      return riskPriority[b.riskLevel] - riskPriority[a.riskLevel];
+    }));
+  }, [pigs, filterStatus, today, settings?.monitoring_start_time, breeds, records, checklistRecords]);
 
   const renderPigCard = (pig: Pig) => {
     const today = new Date().toISOString().split('T')[0];
     const monitoringTiming = calculateMonitoringTiming(
       pig.lastMonitoredTime && pig.lastMonitoredDate === today ? pig.lastMonitoredTime : null,
       settings?.monitoring_start_time || '08:00'
+    );
+
+    // Calculate risk level for the pig
+    const breed = breeds.find(b => b.id === pig.breed_id);
+    const pigRecords = records?.filter(r => r.pig_id === pig.id) || [];
+    const pigChecklistRecords = checklistRecords?.filter(r => 
+      pigRecords.some(pr => pr.id === r.monitoring_id)
+    ) || [];
+
+    const riskAnalysis = breed ? 
+      calculateRiskLevel(pigRecords, pigChecklistRecords, breed, pig.category) :
+      { riskLevel: 'Low' as RiskLevel };  // Type assertion here
+    
+    const riskColor = getRiskColor(riskAnalysis.riskLevel);
+
+    const CardContent = ({ disabled = false }) => (
+      <ThemedView style={[styles.pigCardContent, disabled && styles.pigCardDisabled]}>
+        <ThemedView style={styles.pigImageWrapper}>
+            <ThemedView style={styles.pigImageContainer}>
+              {pig.image ? (
+                <Image source={{ uri: pig.image }} style={styles.pigImage} />
+              ) : (
+                <ThemedView style={styles.pigImagePlaceholder} darkColor="#2C2C2E" lightColor="#E5E5EA">
+                  <ThemedText style={styles.pigImageInitial}>
+                    {pig.name.charAt(0).toUpperCase()}
+                  </ThemedText>
+                </ThemedView>
+              )}
+            </ThemedView>
+          <ThemedView style={[
+            styles.statusIndicator,
+            monitoringTiming.lastMonitoredTime ? styles.statusIndicatorMonitored : styles.statusIndicatorNotMonitored
+          ]} />
+        </ThemedView>
+
+            <ThemedView style={styles.pigInfo}>
+              <ThemedView style={styles.pigNameRow}>
+            <ThemedView style={styles.nameAndRiskContainer}>
+                <ThemedText style={styles.pigName} darkColor="#FFFFFF" lightColor="#000000">
+                  {pig.name}
+                </ThemedText>
+            </ThemedView>
+
+            <ThemedView style={[
+                styles.riskBadge,
+                riskAnalysis.riskLevel === 'High' ? styles.highRisk :
+                riskAnalysis.riskLevel === 'Moderate' ? styles.moderateRisk :
+                styles.healthy
+              ]}>
+                <IconSymbol 
+                  name={riskAnalysis.riskLevel === 'Low' ? 'checkmark.circle.fill' : 'exclamationmark.triangle.fill'} 
+                  size={12} 
+                  color={riskColor} 
+                />
+                <ThemedText style={[styles.riskText, { color: riskColor }]}>
+                  {riskAnalysis.riskLevel} Risk
+                </ThemedText>
+              </ThemedView>
+            
+                <ThemedView style={[
+                  styles.monitoringBadge,
+                  monitoringTiming.lastMonitoredTime ? styles.monitoredBadge : styles.notMonitoredBadge
+                ]}>
+                  <IconSymbol 
+                    name={monitoringTiming.lastMonitoredTime ? "checkmark.circle.fill" : "exclamationmark.circle.fill"} 
+                size={12} 
+                    color={monitoringTiming.lastMonitoredTime ? "#30D158" : "#FF453A"} 
+                  />
+                  <ThemedText style={[
+                    styles.monitoringText,
+                    monitoringTiming.lastMonitoredTime ? styles.monitoredText : styles.notMonitoredText
+                  ]}>
+                    {monitoringTiming.lastMonitoredTime ? 'Monitored' : 'Not Monitored'}
+                  </ThemedText>
+                </ThemedView>
+              </ThemedView>
+
+              <ThemedView style={styles.pigMetaInfo}>
+                <ThemedView style={[
+                  styles.categoryBadge,
+                  pig.category === 'Adult' ? styles.adultBadge : styles.youngBadge
+                ]}>
+                  <ThemedText style={[
+                    styles.categoryText,
+                    pig.category === 'Adult' ? styles.adultText : styles.youngText
+                  ]}>
+                    {pig.category}
+                  </ThemedText>
+                </ThemedView>
+            <ThemedText style={styles.breedName} darkColor="#8E8E93" lightColor="#8E8E93">
+              {pig.breed_name}
+                  </ThemedText>
+                </ThemedView>
+
+              <ThemedView style={styles.monitoringInfo}>
+                {monitoringTiming.lastMonitoredTime ? (
+                  <ThemedView style={styles.monitoringTimeContainer}>
+                <ThemedText style={styles.monitoringTimeLabel}>
+                  Last monitored: <ThemedText style={styles.monitoringTimeValue}>{monitoringTiming.lastMonitoredTime}</ThemedText>
+                    </ThemedText>
+                    {monitoringTiming.timeRemaining && (
+                  <ThemedText style={[styles.monitoringTimeLabel, styles.nextMonitoringLabel]}>
+                    Next: <ThemedText style={styles.nextMonitoringValue}>{monitoringTiming.timeRemaining}</ThemedText>
+                  </ThemedText>
+                )}
+              </ThemedView>
+            ) : (
+              <ThemedText style={styles.monitoringTimeLabel}>
+                {monitoringTiming.canMonitor ? 
+                  'Ready for monitoring' : 
+                  `Starts at ${monitoringTiming.nextMonitoringTime}`
+                }
+                </ThemedText>
+            )}
+                </ThemedView>
+              </ThemedView>
+            </ThemedView>
     );
 
     return (
@@ -96,157 +241,12 @@ export default function DashboardScreen() {
               pathname: "/(pigs)/[id]/monitor" as const,
               params: { id: pig.id }
             }}
-            style={styles.pigCardContent}
+            style={styles.cardLink}
           >
-            <ThemedView style={styles.pigImageContainer}>
-              {pig.image ? (
-                <Image source={{ uri: pig.image }} style={styles.pigImage} />
-              ) : (
-                <ThemedView style={styles.pigImagePlaceholder} darkColor="#2C2C2E" lightColor="#E5E5EA">
-                  <ThemedText style={styles.pigImageInitial}>
-                    {pig.name.charAt(0).toUpperCase()}
-                  </ThemedText>
-                </ThemedView>
-              )}
-            </ThemedView>
-            <ThemedView style={styles.pigInfo}>
-              <ThemedView style={styles.pigNameRow}>
-                <ThemedText style={styles.pigName} darkColor="#FFFFFF" lightColor="#000000">
-                  {pig.name}
-                </ThemedText>
-                <ThemedView style={[
-                  styles.monitoringBadge,
-                  monitoringTiming.lastMonitoredTime ? styles.monitoredBadge : styles.notMonitoredBadge
-                ]}>
-                  <IconSymbol 
-                    name={monitoringTiming.lastMonitoredTime ? "checkmark.circle.fill" : "exclamationmark.circle.fill"} 
-                    size={14} 
-                    color={monitoringTiming.lastMonitoredTime ? "#30D158" : "#FF453A"} 
-                  />
-                  <ThemedText style={[
-                    styles.monitoringText,
-                    monitoringTiming.lastMonitoredTime ? styles.monitoredText : styles.notMonitoredText
-                  ]}>
-                    {monitoringTiming.lastMonitoredTime ? 'Monitored' : 'Not Monitored'}
-                  </ThemedText>
-                </ThemedView>
-              </ThemedView>
-              <ThemedView style={styles.monitoringInfo}>
-                {monitoringTiming.lastMonitoredTime ? (
-                  <ThemedView style={styles.monitoringTimeContainer}>
-                    <ThemedText style={styles.monitoringTimeText}>
-                      Last monitored: {monitoringTiming.lastMonitoredTime}
-                    </ThemedText>
-                    {monitoringTiming.timeRemaining && (
-                      <ThemedText style={[styles.monitoringTimeText, styles.nextMonitoringText]}>
-                        Next monitoring in: {monitoringTiming.timeRemaining}
-                      </ThemedText>
-                    )}
-                  </ThemedView>
-                ) : (
-                  <ThemedText style={styles.monitoringTimeText}>
-                    {monitoringTiming.canMonitor ? 
-                      'Ready for monitoring' : 
-                      `Starts at ${monitoringTiming.nextMonitoringTime}`
-                    }
-                  </ThemedText>
-                )}
-              </ThemedView>
-              <ThemedView style={styles.pigMetaInfo}>
-                <ThemedText style={styles.pigDetails} darkColor="#8E8E93" lightColor="#8E8E93">
-                  {pig.breed_name}
-                </ThemedText>
-                <ThemedText style={styles.pigDot} darkColor="#8E8E93" lightColor="#8E8E93">
-                  •
-                </ThemedText>
-                <ThemedView style={[
-                  styles.categoryBadge,
-                  pig.category === 'Adult' ? styles.adultBadge : styles.youngBadge
-                ]}>
-                  <ThemedText style={[
-                    styles.categoryText,
-                    pig.category === 'Adult' ? styles.adultText : styles.youngText
-                  ]}>
-                    {pig.category}
-                  </ThemedText>
-                </ThemedView>
-              </ThemedView>
-            </ThemedView>
+            <CardContent />
           </Link>
         ) : (
-          <ThemedView style={[styles.pigCardContent, styles.pigCardDisabled]}>
-            <ThemedView style={styles.pigImageContainer}>
-              {pig.image ? (
-                <Image source={{ uri: pig.image }} style={styles.pigImage} />
-              ) : (
-                <ThemedView style={styles.pigImagePlaceholder} darkColor="#2C2C2E" lightColor="#E5E5EA">
-                  <ThemedText style={styles.pigImageInitial}>
-                    {pig.name.charAt(0).toUpperCase()}
-                  </ThemedText>
-                </ThemedView>
-              )}
-            </ThemedView>
-            <ThemedView style={styles.pigInfo}>
-              <ThemedView style={styles.pigNameRow}>
-                <ThemedText style={styles.pigName} darkColor="#FFFFFF" lightColor="#000000">
-                  {pig.name}
-                </ThemedText>
-                <ThemedView style={[
-                  styles.monitoringBadge,
-                  monitoringTiming.lastMonitoredTime ? styles.monitoredBadge : styles.notMonitoredBadge
-                ]}>
-                  <IconSymbol 
-                    name={monitoringTiming.lastMonitoredTime ? "checkmark.circle.fill" : "exclamationmark.circle.fill"} 
-                    size={14} 
-                    color={monitoringTiming.lastMonitoredTime ? "#30D158" : "#FF453A"} 
-                  />
-                  <ThemedText style={[
-                    styles.monitoringText,
-                    monitoringTiming.lastMonitoredTime ? styles.monitoredText : styles.notMonitoredText
-                  ]}>
-                    {monitoringTiming.lastMonitoredTime ? 'Monitored' : 'Not Monitored'}
-                  </ThemedText>
-                </ThemedView>
-              </ThemedView>
-              <ThemedView style={styles.monitoringInfo}>
-                {monitoringTiming.lastMonitoredTime ? (
-                  <ThemedView style={styles.monitoringTimeContainer}>
-                    <ThemedText style={styles.monitoringTimeText}>
-                      Last monitored: {monitoringTiming.lastMonitoredTime}
-                    </ThemedText>
-                    {monitoringTiming.timeRemaining && (
-                      <ThemedText style={[styles.monitoringTimeText, styles.nextMonitoringText]}>
-                        Next monitoring in: {monitoringTiming.timeRemaining}
-                      </ThemedText>
-                    )}
-                  </ThemedView>
-                ) : (
-                  <ThemedText style={styles.monitoringTimeText}>
-                    Starts at {monitoringTiming.nextMonitoringTime}
-                  </ThemedText>
-                )}
-              </ThemedView>
-              <ThemedView style={styles.pigMetaInfo}>
-                <ThemedText style={styles.pigDetails} darkColor="#8E8E93" lightColor="#8E8E93">
-                  {pig.breed_name}
-                </ThemedText>
-                <ThemedText style={styles.pigDot} darkColor="#8E8E93" lightColor="#8E8E93">
-                  •
-                </ThemedText>
-                <ThemedView style={[
-                  styles.categoryBadge,
-                  pig.category === 'Adult' ? styles.adultBadge : styles.youngBadge
-                ]}>
-                  <ThemedText style={[
-                    styles.categoryText,
-                    pig.category === 'Adult' ? styles.adultText : styles.youngText
-                  ]}>
-                    {pig.category}
-                  </ThemedText>
-                </ThemedView>
-              </ThemedView>
-            </ThemedView>
-          </ThemedView>
+          <CardContent disabled />
         )}
       </ThemedView>
     );
@@ -287,7 +287,31 @@ export default function DashboardScreen() {
     </ThemedView>
   );
 
+  const renderFloatingNotification = () => (
+    <Link href="/(pigs)/notifications" asChild>
+      <TouchableOpacity style={styles.floatingButton}>
+        <ThemedView style={styles.notificationBadge}>
+          <Ionicons name="notifications" size={24} color="#FFFFFF" />
+        </ThemedView>
+      </TouchableOpacity>
+    </Link>
+  );
+
+  useEffect(() => {
+    const setupNotifications = async () => {
+      await registerForPushNotificationsAsync();
+    };
+    setupNotifications();
+  }, []);
+
+  useEffect(() => {
+    if (pigs.length > 0 && breeds.length > 0 && records && checklistRecords) {
+      scheduleRiskNotification(pigs, records, checklistRecords, breeds);
+    }
+  }, [pigs, breeds, records, checklistRecords]);
+
   return (
+    <>
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
       headerImage={
@@ -379,6 +403,8 @@ export default function DashboardScreen() {
         )}
       </ThemedView>
     </ParallaxScrollView>
+      {renderFloatingNotification()}
+    </>
   );
 }
 
@@ -529,27 +555,49 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   pigCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 16,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 3,
+    marginBottom: 12,
+  },
+  cardLink: {
+    flex: 1,
   },
   pigCardContent: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    gap: 12,
+    padding: 16,
+    gap: 16,
+  },
+  pigImageWrapper: {
+    position: 'relative',
   },
   pigImageContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(142, 142, 147, 0.1)',
+  },
+  statusIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: '#1C1C1E',
+  },
+  statusIndicatorMonitored: {
+    backgroundColor: '#30D158',
+  },
+  statusIndicatorNotMonitored: {
+    backgroundColor: '#FF453A',
   },
   pigImage: {
     width: '100%',
@@ -562,35 +610,57 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pigImageInitial: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '600',
-    color: '#8E8E93',
   },
   pigInfo: {
     flex: 1,
-    gap: 4,
+    gap: 8,
   },
   pigNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: 8,
   },
   pigName: {
-    fontSize: 17,
+    fontSize: 18,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  monitoringBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  monitoredBadge: {
+    backgroundColor: 'rgba(48, 209, 88, 0.1)',
+  },
+  notMonitoredBadge: {
+    backgroundColor: 'rgba(255, 69, 58, 0.1)',
+  },
+  monitoringText: {
+    fontSize: 11,
     fontWeight: '600',
+  },
+  monitoredText: {
+    color: '#30D158',
+  },
+  notMonitoredText: {
+    color: '#FF453A',
   },
   pigMetaInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
-  pigDetails: {
-    fontSize: 15,
-  },
-  pigDot: {
-    fontSize: 15,
-    opacity: 0.5,
+  breedName: {
+    fontSize: 13,
+    opacity: 0.8,
   },
   categoryBadge: {
     paddingHorizontal: 8,
@@ -598,10 +668,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   adultBadge: {
-    backgroundColor: 'rgba(48, 209, 88, 0.2)',
+    backgroundColor: 'rgba(48, 209, 88, 0.15)',
   },
   youngBadge: {
-    backgroundColor: 'rgba(255, 149, 0, 0.2)',
+    backgroundColor: 'rgba(255, 149, 0, 0.15)',
+  },
+  categoryText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   adultText: {
     color: '#30D158',
@@ -609,9 +683,29 @@ const styles = StyleSheet.create({
   youngText: {
     color: '#FF9500',
   },
-  categoryText: {
-    fontSize: 12,
-    fontWeight: '600',
+  monitoringInfo: {
+    marginTop: 4,
+  },
+  monitoringTimeContainer: {
+    gap: 4,
+  },
+  monitoringTimeLabel: {
+    fontSize: 13,
+    color: '#8E8E93',
+  },
+  monitoringTimeValue: {
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  nextMonitoringLabel: {
+    color: '#FF9500',
+  },
+  nextMonitoringValue: {
+    color: '#FF9500',
+    fontWeight: '500',
+  },
+  pigCardDisabled: {
+    opacity: 0.7,
   },
   loadingContainer: {
     flex: 1,
@@ -646,45 +740,52 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  monitoringBadge: {
+  nameAndRiskContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  riskBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    gap: 4,
   },
-  monitoredBadge: {
-    backgroundColor: 'rgba(48, 209, 88, 0.1)',
-  },
-  notMonitoredBadge: {
+  highRisk: {
     backgroundColor: 'rgba(255, 69, 58, 0.1)',
   },
-  monitoringText: {
-    fontSize: 12,
+  moderateRisk: {
+    backgroundColor: 'rgba(255, 149, 0, 0.1)',
+  },
+  healthy: {
+    backgroundColor: 'rgba(48, 209, 88, 0.1)',
+  },
+  riskText: {
+    fontSize: 11,
     fontWeight: '600',
   },
-  monitoredText: {
-    color: '#30D158',
+  floatingButton: {
+    position: 'absolute',
+    top: 60,
+    right: 16,
+    zIndex: 1000,
   },
-  notMonitoredText: {
-    color: '#FF453A',
-  },
-  monitoringInfo: {
-    marginTop: 4,
-  },
-  monitoringTimeContainer: {
-    gap: 4,  // This creates vertical spacing between the lines
-  },
-  monitoringTimeText: {
-    fontSize: 12,
-    color: '#8E8E93',
-  },
-  pigCardDisabled: {
-    opacity: 0.6,
-    pointerEvents: 'none',
-  },
-  nextMonitoringText: {
-    color: '#FF9500',
+  notificationBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });

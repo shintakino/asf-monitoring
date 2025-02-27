@@ -67,24 +67,6 @@ export default function SettingsScreen() {
           </Link>
         </ThemedView>
 
-        {/* Notifications Section */}
-        <ThemedView style={styles.section}>
-          <ThemedView style={styles.sectionHeader}>
-            <IconSymbol name="bell" size={24} color="#FF453A" />
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              Notifications
-            </ThemedText>
-          </ThemedView>
-          <Link href="/" style={styles.menuItem}>
-            <ThemedView style={styles.menuItemContent}>
-              <ThemedText style={styles.menuItemText}>
-                Configure Reminders
-              </ThemedText>
-              <IconSymbol name="chevron.right" size={20} color="#8E8E93" />
-            </ThemedView>
-          </Link>
-        </ThemedView>
-
         {/* Monitoring Time Settings Section */}
         <ThemedView style={styles.section}>
           <ThemedView style={styles.sectionHeader}>
