@@ -10,9 +10,32 @@ type DatabaseContextType = {
   error: Error | null;
 };
 
-const DatabaseContext = createContext<DatabaseContextType>({
+export type NotificationPreferences = {
+  highRiskInterval: number; // minutes
+  moderateRiskInterval: number;
+  quietHoursStart: string;
+  quietHoursEnd: string;
+  trendAlerts: boolean;
+  soundEnabled: boolean;
+};
+
+const DatabaseContext = createContext<{
+  isLoading: boolean;
+  error: Error | null;
+  notificationPreferences: NotificationPreferences;
+  updateNotificationPreferences: (prefs: Partial<NotificationPreferences>) => Promise<void>;
+}>({
   isLoading: true,
   error: null,
+  notificationPreferences: {
+    highRiskInterval: 0,
+    moderateRiskInterval: 0,
+    quietHoursStart: '',
+    quietHoursEnd: '',
+    trendAlerts: false,
+    soundEnabled: false,
+  },
+  updateNotificationPreferences: async () => {},
 });
 
 export function DatabaseProvider({ children }: { children: React.ReactNode }) {
@@ -52,7 +75,14 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <SQLiteProvider databaseName="asf_monitor.db">
-      <DatabaseContext.Provider value={{ isLoading: false, error: null }}>
+      <DatabaseContext.Provider value={{ isLoading: false, error: null, notificationPreferences: {
+        highRiskInterval: 0,
+        moderateRiskInterval: 0,
+        quietHoursStart: '',
+        quietHoursEnd: '',
+        trendAlerts: false,
+        soundEnabled: false,
+      }, updateNotificationPreferences: async () => {} }}>
         {children}
       </DatabaseContext.Provider>
     </SQLiteProvider>

@@ -1,5 +1,4 @@
-import React from 'react';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, ScrollView, ActivityIndicator, Dimensions, TouchableOpacity, Image } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
@@ -11,20 +10,131 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { calculateRiskLevel, getRiskColor } from '@/utils/risk';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import { format, parseISO, subDays, differenceInDays } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg'; // Import SVG components
+
+const TIMEZONE = 'Asia/Singapore';
+
+interface RiskAnalysis {
+  riskLevel: 'Low' | 'Moderate' | 'High';
+  temperatureScore: number;
+  symptomScore: number;
+  progressionScore: number;
+  totalScore: number;
+}
 
 export default function PigReportScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { pigs } = usePigs();
   const { breeds } = useBreeds();
-  const { records, checklistRecords, isLoading, error } = useMonitoring(parseInt(id));
+  const { 
+    records, 
+    checklistRecords, 
+    reports,
+    isLoading, 
+    error,
+    saveReport,
+    refreshReports 
+  } = useMonitoring(parseInt(id));
 
   // Move useState hooks to the top
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipData, setTooltipData] = useState({ x: 0, y: 0, value: 0 });
+  const [isSaving, setIsSaving] = useState(false);
+  const [riskAnalysis, setRiskAnalysis] = useState<RiskAnalysis>({
+    riskLevel: 'Low',
+    temperatureScore: 0,
+    symptomScore: 0,
+    progressionScore: 0,
+    totalScore: 0
+  });
 
   const pig = pigs.find(p => p.id === parseInt(id));
   const breed = breeds.find(b => b.id === pig?.breed_id);
+
+  useEffect(() => {
+    const generateAndSaveReport = async () => {
+      if (!pig || !breed || isLoading || isSaving) return;
+
+      try {
+        setIsSaving(true);
+
+        // Prepare temperature data
+        const today = new Date();
+        const temperatureData = Array(7).fill(0);
+        const labels = [];
+
+        for (let i = 6; i >= 0; i--) {
+          const day = subDays(today, i);
+          labels.push(format(day, 'EEE'));
+        }
+
+        records.forEach(record => {
+          const recordDate = parseISO(record.date);
+          const dayIndex = differenceInDays(today, recordDate);
+          if (dayIndex >= 0 && dayIndex < 7) {
+            temperatureData[6 - dayIndex] = record.temperature;
+          }
+        });
+
+        // Prepare symptom data
+        const symptomCounts = Array(7).fill(0);
+        const symptomSet = Array.from({ length: 7 }, () => new Set());
+
+        records.forEach(record => {
+          const recordDate = parseISO(record.date);
+          const dayIndex = differenceInDays(today, recordDate);
+          if (dayIndex >= 0 && dayIndex < 7) {
+            const checkedSymptoms = checklistRecords.filter(cr => 
+              cr.monitoring_id === record.id && cr.checked
+            );
+            checkedSymptoms.forEach(symptom => 
+              symptomSet[6 - dayIndex].add(symptom.symptom)
+            );
+          }
+        });
+
+        symptomSet.forEach((symptoms, index) => {
+          symptomCounts[index] = symptoms.size;
+        });
+
+        // Get risk analysis
+        const analysis = calculateRiskLevel(records, checklistRecords, breed, pig.category);
+        setRiskAnalysis(analysis);
+
+        // Get latest notes
+        const latestNotes = records
+          .filter(record => record.date === records[0]?.date && record.notes)
+          .map(record => record.notes)
+          .join('\n');
+
+        // Save report
+        await saveReport({
+          pig_id: pig.id,
+          date: formatInTimeZone(today, TIMEZONE, 'yyyy-MM-dd'),
+          temperature_data: JSON.stringify({
+            labels,
+            data: temperatureData
+          }),
+          symptom_data: JSON.stringify({
+            labels,
+            data: symptomCounts
+          }),
+          risk_analysis: JSON.stringify(analysis),
+          notes: latestNotes,
+          created_at: formatInTimeZone(today, TIMEZONE, "yyyy-MM-dd'T'HH:mm:ssXXX")
+        });
+
+        await refreshReports();
+      } catch (e) {
+        console.error('Error generating report:', e);
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+    generateAndSaveReport();
+  }, [pig, breed, records, checklistRecords, saveReport, refreshReports, isLoading]);
 
   const handlePointPress = (value: number, index: number) => {
     setTooltipData({ x: index, y: value, value });
@@ -33,7 +143,6 @@ export default function PigReportScreen() {
 
   if (!pig || !breed) return null;
 
-  const riskAnalysis = calculateRiskLevel(records, checklistRecords, breed, pig.category);
   const latestRecord = records[0];
   const symptomsCount = checklistRecords.filter(r => r.checked).length;
 

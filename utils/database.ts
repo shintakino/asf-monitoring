@@ -15,12 +15,13 @@ export async function initDatabase() {
     DROP TABLE IF EXISTS checklist_records;
     DROP TABLE IF EXISTS monitoring_records;
     DROP TABLE IF EXISTS DailyMonitoring;
-    DROP TABLE IF EXISTS Checklist;
+    DROP TABLE IF EXISTS reports;
+    DROP TABLE IF EXISTS critical_time_windows;
+  `);
+    /*DROP TABLE IF EXISTS Checklist;
     DROP TABLE IF EXISTS Pigs;
     DROP TABLE IF EXISTS Breeds;
-    DROP TABLE IF EXISTS Settings;
-  `);
-
+    DROP TABLE IF EXISTS Settings; */
   // Initialize database tables with new schema
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS Breeds (
@@ -52,6 +53,18 @@ export async function initDatabase() {
       time TIME NOT NULL DEFAULT (strftime('%H:%M', 'now', 'localtime')),
       notes TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (pig_id) REFERENCES Pigs(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pig_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      temperature_data TEXT NOT NULL,
+      symptom_data TEXT NOT NULL,
+      risk_analysis TEXT NOT NULL,
+      notes TEXT,
+      created_at TEXT NOT NULL,
       FOREIGN KEY (pig_id) REFERENCES Pigs(id) ON DELETE CASCADE
     );
 
@@ -191,6 +204,17 @@ export interface MonitoringTiming {
   timeRemaining?: string | null;
 }
 
+export interface Report {
+  id?: number;
+  pig_id: number;
+  date: string;
+  temperature_data: string; // JSON string of last 7 days
+  symptom_data: string; // JSON string of last 7 days
+  risk_analysis: string; // JSON string of risk scores
+  notes: string | null;
+  created_at: string;
+}
+
 export async function checkDatabaseHealth() {
   try {
     const db = await SQLite.openDatabaseAsync('asf_monitor.db');
@@ -200,4 +224,36 @@ export async function checkDatabaseHealth() {
     console.error('Database health check failed:', error);
     return false;
   }
-} 
+}
+
+// Add table for critical monitoring windows
+export const createCriticalTimeWindowsTable = async (db: SQLite.SQLiteDatabase) => {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS critical_time_windows (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pig_id INTEGER,
+      start_time TEXT,
+      end_time TEXT,
+      reason TEXT,
+      FOREIGN KEY (pig_id) REFERENCES pigs (id)
+    );
+  `);
+};
+
+export const createReportsTable = async (db: SQLite.SQLiteDatabase) => {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pig_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      temperature_data TEXT NOT NULL,
+      symptom_data TEXT NOT NULL,
+      risk_analysis TEXT NOT NULL,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (pig_id) REFERENCES pigs (id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_reports_pig ON reports(pig_id);
+    CREATE INDEX IF NOT EXISTS idx_reports_date ON reports(date);
+  `);
+}; 
