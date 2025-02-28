@@ -14,9 +14,18 @@ export function calculateRiskLevel(
   breed: Breed,
   category: 'Adult' | 'Young'
 ): RiskAnalysis {
+  console.log('Calculating risk level with:', {
+    records: records.length,
+    checklistRecords: checklistRecords.length,
+    breed,
+    category
+  });
+
   // Get temperature limits based on pig category
   const minTemp = category === 'Adult' ? breed.min_temp_adult : breed.min_temp_young;
   const maxTemp = category === 'Adult' ? breed.max_temp_adult : breed.max_temp_young;
+
+  console.log('Temperature limits:', { minTemp, maxTemp });
 
   // 1. Temperature Analysis (0-25 points)
   let temperatureScore = 0;
@@ -28,6 +37,8 @@ export function calculateRiskLevel(
       0
     );
 
+    console.log('Temperature analysis:', { latestTemp, tempDeviation });
+
     if (tempDeviation >= 1.5) temperatureScore = 25;
     else if (tempDeviation >= 1.0) temperatureScore = 20;
     else if (tempDeviation >= 0.5) temperatureScore = 15;
@@ -37,8 +48,13 @@ export function calculateRiskLevel(
   let symptomScore = 0;
   if (checklistRecords.length > 0) {
     const checkedSymptoms = checklistRecords.filter(record => record.checked);
+    console.log('Checked symptoms:', checkedSymptoms);
+    
     symptomScore = Math.min(
-      checkedSymptoms.reduce((total, symptom) => total + (symptom.risk_weight * 10), 0),
+      checkedSymptoms.reduce((total, symptom) => {
+        console.log('Adding symptom score:', { symptom, score: symptom.risk_weight * 10 });
+        return total + (symptom.risk_weight * 10);
+      }, 0),
       50
     );
   }
@@ -55,6 +71,11 @@ export function calculateRiskLevel(
     0
   );
 
+  console.log('Progression analysis:', {
+    currentSymptomCount,
+    previousMaxSymptoms
+  });
+
   if (currentSymptomCount > previousMaxSymptoms) {
     progressionScore += 15; // Worsening condition
   } else if (currentSymptomCount === previousMaxSymptoms && currentSymptomCount > 0) {
@@ -64,11 +85,19 @@ export function calculateRiskLevel(
   // Analyze temperature trend
   if (records.length > 1) {
     const tempTrend = records[0].temperature - records[1].temperature;
+    console.log('Temperature trend:', tempTrend);
     if (tempTrend > 0) progressionScore += 10; // Worsening temperature
   }
 
   // Calculate total score
   const totalScore = temperatureScore + symptomScore + progressionScore;
+
+  console.log('Final scores:', {
+    temperatureScore,
+    symptomScore,
+    progressionScore,
+    totalScore
+  });
 
   // Determine risk level
   let riskLevel: 'Low' | 'Moderate' | 'High';

@@ -7,6 +7,7 @@ import { DatabaseProvider } from '@/contexts/DatabaseContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import * as SQLite from 'expo-sqlite';
 import { View, ActivityIndicator } from 'react-native';
+import { registerBackgroundTasks } from '@/utils/notifications';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -34,6 +35,11 @@ export default function RootLayout() {
       setIsReady(true);
     }
   }, [loaded, dbInitialized]);
+
+  useEffect(() => {
+    // Register background tasks when app starts
+    registerBackgroundTasks().catch(console.error);
+  }, []);
 
   if (!isReady) {
     return (

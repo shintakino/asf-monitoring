@@ -17,6 +17,11 @@
       }
     },
     "android": {
+      "permissions": [
+        "NOTIFICATIONS",
+        "BACKGROUND_FETCH",
+        "WAKE_LOCK"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"

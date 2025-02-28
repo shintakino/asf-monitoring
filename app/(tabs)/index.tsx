@@ -31,6 +31,9 @@ import Animated, {
   Extrapolate
 } from 'react-native-reanimated';
 import { formatInTimeZone } from 'date-fns-tz';
+import { AppState } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { TimeIntervalTriggerInput } from 'expo-notifications';
 
 // Add this type definition at the top with other types
 type MonitoringFilter = 'All' | 'Monitored' | 'Not Monitored';
@@ -81,10 +84,12 @@ const AnimatedStatCard: React.FC<StatCardProps> = ({ icon, number, label, delay 
   }, []);
 
   return (
-    <Animated.View style={[styles.statCard, animatedStyle]}>
-      <IconSymbol name={icon} size={32} color={icon === "pawprint.fill" ? "#FF9500" : icon === "checkmark.circle.fill" ? "#30D158" : "#FF453A"} />
-      <ThemedText style={styles.statNumber} type="title">{number}</ThemedText>
-      <ThemedText style={styles.statLabel}>{label}</ThemedText>
+    <Animated.View style={animatedStyle}>
+      <ThemedView style={styles.statCard}>
+        <IconSymbol name={icon} size={32} color={icon === "pawprint.fill" ? "#FF9500" : icon === "checkmark.circle.fill" ? "#30D158" : "#FF453A"} />
+        <ThemedText style={styles.statNumber} type="title">{number}</ThemedText>
+        <ThemedText style={styles.statLabel}>{label}</ThemedText>
+      </ThemedView>
     </Animated.View>
   );
 };
@@ -111,28 +116,29 @@ const AnimatedFilterButton: React.FC<FilterButtonProps> = ({ type, isActive, onP
   };
 
   return (
-    <AnimatedTouchableOpacity
-      onPress={onPress}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      style={[
-        styles.filterButton,
-        isActive && styles.filterButtonActive,
-        animatedStyle,
-      ]}
-    >
-      <IconSymbol
-        name={type === 'All' ? 'list.bullet' : type === 'Monitored' ? 'checkmark.circle.fill' : 'exclamationmark.circle.fill'}
-        size={16}
-        color={isActive ? '#007AFF' : '#8E8E93'}
-      />
-      <ThemedText style={[
-        styles.filterButtonText,
-        isActive && styles.filterButtonTextActive
-      ]}>
-        {type}
-      </ThemedText>
-    </AnimatedTouchableOpacity>
+    <Animated.View style={animatedStyle}>
+      <TouchableOpacity
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        style={[
+          styles.filterButton,
+          isActive && styles.filterButtonActive,
+        ]}
+      >
+        <IconSymbol
+          name={type === 'All' ? 'list.bullet' : type === 'Monitored' ? 'checkmark.circle.fill' : 'exclamationmark.circle.fill'}
+          size={16}
+          color={isActive ? '#007AFF' : '#8E8E93'}
+        />
+        <ThemedText style={[
+          styles.filterButtonText,
+          isActive && styles.filterButtonTextActive
+        ]}>
+          {type}
+        </ThemedText>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
@@ -251,6 +257,71 @@ export default function DashboardScreen() {
   const { breeds } = useBreeds();
   const { records, checklistRecords, refreshRecords } = useMonitoring();
   const [filterStatus, setFilterStatus] = useState<MonitoringFilter>('All');
+  const [forceUpdate, setForceUpdate] = useState(0);
+
+  // Add timer to update countdown
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setForceUpdate(prev => prev + 1);
+    }, 60000); // Update every minute
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Add app state listener
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        refreshPigs();
+        refreshSettings();
+        refreshRecords();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // Schedule next monitoring notifications
+  useEffect(() => {
+    const scheduleNextMonitoring = async () => {
+      try {
+        await Notifications.cancelScheduledNotificationAsync('next-monitoring');
+        
+        const now = new Date();
+        const startTime = settings?.monitoring_start_time || '08:00';
+        const [hours, minutes] = startTime.split(':').map(Number);
+        const nextMonitoring = new Date(now);
+        nextMonitoring.setHours(hours, minutes, 0, 0);
+
+        if (nextMonitoring.getTime() < now.getTime()) {
+          nextMonitoring.setDate(nextMonitoring.getDate() + 1);
+        }
+
+        const secondsUntilNext = Math.floor((nextMonitoring.getTime() - now.getTime()) / 1000);
+
+        await Notifications.scheduleNotificationAsync({
+          identifier: 'next-monitoring',
+          content: {
+            title: '🕒 Monitoring Time',
+            body: 'Time to start monitoring your pigs',
+          },
+          trigger: {
+            type: 'timeInterval',
+            seconds: secondsUntilNext,
+            repeats: true
+          } as TimeIntervalTriggerInput
+        });
+      } catch (error) {
+        console.error('Error scheduling monitoring notification:', error);
+      }
+    };
+
+    if (settings?.monitoring_start_time) {
+      scheduleNextMonitoring();
+    }
+  }, [settings?.monitoring_start_time]);
 
   useFocusEffect(
     useCallback(() => {

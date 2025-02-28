@@ -1,31 +1,34 @@
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
+import * as BackgroundFetch from 'expo-background-fetch';
 import { Platform } from 'react-native';
 import { calculateRiskLevel } from './risk';
 import type { Pig, MonitoringRecord, ChecklistRecord, Breed } from './database';
 import { TimeIntervalTriggerInput } from 'expo-notifications';
+import { openDatabase } from '@/utils/database';
 
-// Define background task name
+// Define background task names
 const BACKGROUND_HEALTH_CHECK = 'BACKGROUND_HEALTH_CHECK';
+const BACKGROUND_FETCH_TASK = 'BACKGROUND_FETCH_TASK';
 
-// Register background task
-TaskManager.defineTask(BACKGROUND_HEALTH_CHECK, async ({ data, error }) => {
-  if (error) {
-    console.error('Background task error:', error);
-    return;
-  }
-  
+// Register background fetch task
+TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
   try {
-    const { pigs, records, checklistRecords, breeds } = data as {
-      pigs: Pig[];
-      records: MonitoringRecord[];
-      checklistRecords: ChecklistRecord[];
-      breeds: Breed[];
-    };
+    const db = await openDatabase();
+    
+    // Fetch required data from database with type casting
+    const pigs = (await db.getAllAsync('SELECT * FROM Pigs')) as Pig[];
+    const records = (await db.getAllAsync('SELECT * FROM monitoring_records')) as MonitoringRecord[];
+    const checklistRecords = (await db.getAllAsync('SELECT * FROM checklist_records')) as ChecklistRecord[];
+    const breeds = (await db.getAllAsync('SELECT * FROM Breeds')) as Breed[];
 
+    // Schedule notifications based on fresh data
     await scheduleRiskNotification(pigs, records, checklistRecords, breeds);
+    
+    return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch (error) {
-    console.error('Error in background health check:', error);
+    console.error('Background fetch failed:', error);
+    return BackgroundFetch.BackgroundFetchResult.Failed;
   }
 });
 
@@ -37,6 +40,119 @@ Notifications.setNotificationHandler({
     shouldSetBadge: true,
   }),
 });
+
+export async function registerBackgroundTasks() {
+  try {
+    // Register background fetch
+    await BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, {
+      minimumInterval: 60 * 15, // 15 minutes
+      stopOnTerminate: false,
+      startOnBoot: true
+    });
+
+    // Set up notification channels for Android
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('risk-alerts', {
+        name: 'Risk Alerts',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF453A',
+      });
+
+      await Notifications.setNotificationChannelAsync('monitoring-reminders', {
+        name: 'Monitoring Reminders',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF453A',
+      });
+
+      await Notifications.setNotificationChannelAsync('health-checks', {
+        name: 'Health Checks',
+        importance: Notifications.AndroidImportance.DEFAULT,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#32ADE6',
+      });
+    }
+
+    console.log('Background tasks registered successfully');
+  } catch (error) {
+    console.error('Failed to register background tasks:', error);
+  }
+}
+
+// Update the notification scheduling function
+export async function scheduleRiskNotification(
+  pigs: Pig[],
+  records: MonitoringRecord[],
+  checklistRecords: ChecklistRecord[],
+  breeds: Breed[]
+) {
+  try {
+    // Cancel existing notifications to avoid duplicates
+    await Notifications.cancelAllScheduledNotificationsAsync();
+
+    // Calculate risk levels for all pigs
+    const pigsWithRisk = pigs.map(pig => {
+      const breed = breeds.find(b => b.id === pig.breed_id);
+      if (!breed) return { ...pig, riskLevel: 'Low' as const };
+
+      const pigRecords = records.filter(r => r.pig_id === pig.id);
+      const pigChecklistRecords = checklistRecords.filter(r => 
+        pigRecords.some(pr => pr.id === r.monitoring_id)
+      );
+
+      const riskAnalysis = calculateRiskLevel(pigRecords, pigChecklistRecords, breed, pig.category);
+      return { ...pig, riskLevel: riskAnalysis.riskLevel };
+    });
+
+    // Group pigs by risk level
+    const highRiskPigs = pigsWithRisk.filter(pig => pig.riskLevel === 'High');
+    const moderateRiskPigs = pigsWithRisk.filter(pig => pig.riskLevel === 'Moderate');
+
+    // Schedule immediate notifications for risks
+    if (highRiskPigs.length > 0) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '🚨 High Risk Alert',
+          body: `${highRiskPigs.length} pig${highRiskPigs.length > 1 ? 's' : ''} showing high risk symptoms: ${highRiskPigs.map(p => p.name).join(', ')}`,
+          data: { type: 'high-risk' },
+        },
+        trigger: null,
+      });
+    }
+
+    if (moderateRiskPigs.length > 0) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '⚠️ Moderate Risk Alert',
+          body: `${moderateRiskPigs.length} pig${moderateRiskPigs.length > 1 ? 's' : ''} showing moderate risk symptoms: ${moderateRiskPigs.map(p => p.name).join(', ')}`,
+          data: { type: 'moderate-risk' },
+        },
+        trigger: null,
+      });
+    }
+
+    // Schedule next check
+    const nextCheckTime = new Date();
+    nextCheckTime.setHours(nextCheckTime.getHours() + 1); // Check every hour
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Health Check',
+        body: 'Performing routine health check...',
+        data: { type: 'health-check' },
+      },
+      trigger: {
+        type: 'timeInterval',
+        seconds: 60 * 60, // Every hour
+        repeats: true
+      } as TimeIntervalTriggerInput,
+    });
+
+  } catch (error) {
+    console.error('Error scheduling risk notifications:', error);
+  }
+}
 
 export async function registerForPushNotificationsAsync() {
   let token;
@@ -69,73 +185,6 @@ export async function registerForPushNotificationsAsync() {
   }
 
   return token;
-}
-
-export async function scheduleRiskNotification(
-  pigs: Pig[],
-  records: MonitoringRecord[],
-  checklistRecords: ChecklistRecord[],
-  breeds: Breed[]
-) {
-  // Cancel existing notifications first
-  await Notifications.cancelAllScheduledNotificationsAsync();
-
-  // Ensure we have all required data
-  if (!pigs.length || !breeds.length || !records || !checklistRecords) {
-    console.log('Missing required data for risk calculation');
-    return;
-  }
-
-  try {
-    // Calculate risk levels for all pigs
-    const pigsWithRisk = pigs.map(pig => {
-      const breed = breeds.find(b => b.id === pig.breed_id);
-      if (!breed) return { ...pig, riskLevel: 'Low' as const };
-
-      const pigRecords = records.filter(r => r.pig_id === pig.id);
-      const pigChecklistRecords = checklistRecords.filter(r => 
-        pigRecords.some(pr => pr.id === r.monitoring_id)
-      );
-
-      const riskAnalysis = calculateRiskLevel(pigRecords, pigChecklistRecords, breed, pig.category);
-      return { ...pig, riskLevel: riskAnalysis.riskLevel };
-    });
-
-    // Filter high and moderate risk pigs
-    const highRiskPigs = pigsWithRisk.filter(pig => pig.riskLevel === 'High');
-    const moderateRiskPigs = pigsWithRisk.filter(pig => pig.riskLevel === 'Moderate');
-
-    // Schedule notifications immediately for any risks found
-    if (highRiskPigs.length > 0) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '⚠️ High Risk Alert',
-          body: `${highRiskPigs.length} pig${highRiskPigs.length > 1 ? 's' : ''} showing high risk symptoms: ${highRiskPigs.map(p => p.name).join(', ')}`,
-          data: { type: 'high-risk', timestamp: new Date().getTime() },
-        },
-        trigger: null, // Send immediately
-      });
-    }
-
-    if (moderateRiskPigs.length > 0) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '⚠️ Moderate Risk Alert',
-          body: `${moderateRiskPigs.length} pig${moderateRiskPigs.length > 1 ? 's' : ''} showing moderate risk symptoms: ${moderateRiskPigs.map(p => p.name).join(', ')}`,
-          data: { type: 'moderate-risk', timestamp: new Date().getTime() },
-        },
-        trigger: null, // Send immediately
-      });
-    }
-
-    console.log('Risk notification scheduled:', {
-      highRiskCount: highRiskPigs.length,
-      moderateRiskCount: moderateRiskPigs.length,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Error scheduling risk notification:', error);
-  }
 }
 
 export async function scheduleMonitoringNotification(pig: Pig, monitoringTime: string) {
@@ -174,26 +223,20 @@ export async function scheduleBackgroundHealthCheck(
   breeds: Breed[]
 ) {
   try {
-    // Check if task is registered
     const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_HEALTH_CHECK);
     if (!isRegistered) {
-      // Define the task first (already done at the top of the file)
-      // Then schedule the notification
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "Pig Health Check",
           body: "Checking pig health status...",
           data: { 
             type: 'health-check',
-            pigs,
-            records,
-            checklistRecords,
-            breeds
+            pigIds: pigs.map(p => p.id)
           },
         },
         trigger: {
           type: 'timeInterval',
-          seconds: 24 * 60 * 60, // Daily
+          seconds: 24 * 60 * 60,
           repeats: true
         } as TimeIntervalTriggerInput,
       });
@@ -352,19 +395,23 @@ export async function scheduleHealthNotifications(
   ]);
 }
 
-// Add this function to handle background notification responses
+// Update the notification handler
 export function setupBackgroundNotificationHandler() {
-  Notifications.addNotificationResponseReceivedListener((response) => {
+  Notifications.addNotificationResponseReceivedListener(async (response) => {
     const data = response.notification.request.content.data;
     
     if (data.type === 'health-check') {
-      // Re-schedule health check when notification is received
-      scheduleBackgroundHealthCheck(
-        data.pigs,
-        data.records,
-        data.checklistRecords,
-        data.breeds
-      );
+      try {
+        const db = await openDatabase();
+        const pigs = (await db.getAllAsync('SELECT * FROM Pigs WHERE id IN (?)', [data.pigIds.join(',')])) as Pig[];
+        const records = (await db.getAllAsync('SELECT * FROM monitoring_records')) as MonitoringRecord[];
+        const checklistRecords = (await db.getAllAsync('SELECT * FROM checklist_records')) as ChecklistRecord[];
+        const breeds = (await db.getAllAsync('SELECT * FROM Breeds')) as Breed[];
+
+        await scheduleRiskNotification(pigs, records, checklistRecords, breeds);
+      } catch (error) {
+        console.error('Error in background notification handler:', error);
+      }
     }
   });
 }

@@ -2,6 +2,10 @@ import * as SQLite from 'expo-sqlite';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system';
 
+export const openDatabase = async () => {
+  return await SQLite.openDatabaseAsync('asf_monitor.db');
+};
+
 export async function initDatabase() {
   const db = await SQLite.openDatabaseAsync('asf_monitor.db');
 
@@ -17,6 +21,7 @@ export async function initDatabase() {
     DROP TABLE IF EXISTS DailyMonitoring;
     DROP TABLE IF EXISTS reports;
     DROP TABLE IF EXISTS critical_time_windows;
+    
   `);
     /*DROP TABLE IF EXISTS Checklist;
     DROP TABLE IF EXISTS Pigs;
