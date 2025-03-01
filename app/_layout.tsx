@@ -8,12 +8,15 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import * as SQLite from 'expo-sqlite';
 import { View, ActivityIndicator } from 'react-native';
 import { registerBackgroundTasks } from '@/utils/notifications';
+import { Slot } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import Splash from './components/Splash';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [isReady, setIsReady] = useState(false);
   const [dbInitialized, setDbInitialized] = useState(false);
-  const [loaded] = useFonts({
+  const [fontsLoaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
@@ -29,24 +32,36 @@ export default function RootLayout() {
       }
     }
 
-    if (loaded && !dbInitialized) {
+    if (fontsLoaded && !dbInitialized) {
       initDB();
-    } else if (loaded && dbInitialized) {
+    } else if (fontsLoaded && dbInitialized) {
       setIsReady(true);
     }
-  }, [loaded, dbInitialized]);
+  }, [fontsLoaded, dbInitialized]);
 
   useEffect(() => {
     // Register background tasks when app starts
     registerBackgroundTasks().catch(console.error);
   }, []);
 
-  if (!isReady) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
+  useEffect(() => {
+    async function prepare() {
+      try {
+        // Artificially delay for a smoother splash screen experience
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        await SplashScreen.hideAsync();
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setIsReady(true);
+      }
+    }
+
+    prepare();
+  }, []);
+
+  if (!fontsLoaded || !isReady) {
+    return <Splash />;
   }
 
   return (

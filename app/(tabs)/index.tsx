@@ -115,7 +115,7 @@ const AnimatedFilterButton: React.FC<FilterButtonProps> = ({ type, isActive, onP
     scale.value = withSpring(1);
   };
 
-  return (
+    return (
     <Animated.View style={animatedStyle}>
       <TouchableOpacity
         onPress={onPress}
@@ -148,29 +148,29 @@ const CardContent: React.FC<CardContentProps> = ({ disabled = false, pig, monito
     style={[styles.pigCardContent, disabled && styles.pigCardDisabled]}
   >
     <ThemedView style={styles.pigImageWrapper}>
-      <ThemedView style={styles.pigImageContainer}>
-        {pig.image ? (
-          <Image source={{ uri: pig.image }} style={styles.pigImage} />
-        ) : (
-          <ThemedView style={styles.pigImagePlaceholder} darkColor="#2C2C2E" lightColor="#E5E5EA">
-            <ThemedText style={styles.pigImageInitial}>
-              {pig.name.charAt(0).toUpperCase()}
-            </ThemedText>
-          </ThemedView>
-        )}
-      </ThemedView>
+            <ThemedView style={styles.pigImageContainer}>
+              {pig.image ? (
+                <Image source={{ uri: pig.image }} style={styles.pigImage} />
+              ) : (
+                <ThemedView style={styles.pigImagePlaceholder} darkColor="#2C2C2E" lightColor="#E5E5EA">
+                  <ThemedText style={styles.pigImageInitial}>
+                    {pig.name.charAt(0).toUpperCase()}
+                  </ThemedText>
+                </ThemedView>
+              )}
+            </ThemedView>
       <ThemedView style={[
         styles.statusIndicator,
         monitoringTiming.lastMonitoredTime ? styles.statusIndicatorMonitored : styles.statusIndicatorNotMonitored
       ]} />
     </ThemedView>
 
-    <ThemedView style={styles.pigInfo}>
-      <ThemedView style={styles.pigNameRow}>
+            <ThemedView style={styles.pigInfo}>
+              <ThemedView style={styles.pigNameRow}>
         <ThemedView style={styles.nameAndRiskContainer}>
-          <ThemedText style={styles.pigName} darkColor="#FFFFFF" lightColor="#000000">
-            {pig.name}
-          </ThemedText>
+                <ThemedText style={styles.pigName} darkColor="#FFFFFF" lightColor="#000000">
+                  {pig.name}
+                </ThemedText>
         </ThemedView>
 
         <ThemedView style={[
@@ -189,63 +189,63 @@ const CardContent: React.FC<CardContentProps> = ({ disabled = false, pig, monito
           </ThemedText>
         </ThemedView>
         
-        <ThemedView style={[
-          styles.monitoringBadge,
-          monitoringTiming.lastMonitoredTime ? styles.monitoredBadge : styles.notMonitoredBadge
-        ]}>
-          <IconSymbol 
-            name={monitoringTiming.lastMonitoredTime ? "checkmark.circle.fill" : "exclamationmark.circle.fill"} 
+                <ThemedView style={[
+                  styles.monitoringBadge,
+                  monitoringTiming.lastMonitoredTime ? styles.monitoredBadge : styles.notMonitoredBadge
+                ]}>
+                  <IconSymbol 
+                    name={monitoringTiming.lastMonitoredTime ? "checkmark.circle.fill" : "exclamationmark.circle.fill"} 
             size={12} 
-            color={monitoringTiming.lastMonitoredTime ? "#30D158" : "#FF453A"} 
-          />
-          <ThemedText style={[
-            styles.monitoringText,
-            monitoringTiming.lastMonitoredTime ? styles.monitoredText : styles.notMonitoredText
-          ]}>
-            {monitoringTiming.lastMonitoredTime ? 'Monitored' : 'Not Monitored'}
-          </ThemedText>
-        </ThemedView>
-      </ThemedView>
+                    color={monitoringTiming.lastMonitoredTime ? "#30D158" : "#FF453A"} 
+                  />
+                  <ThemedText style={[
+                    styles.monitoringText,
+                    monitoringTiming.lastMonitoredTime ? styles.monitoredText : styles.notMonitoredText
+                  ]}>
+                    {monitoringTiming.lastMonitoredTime ? 'Monitored' : 'Not Monitored'}
+                  </ThemedText>
+                </ThemedView>
+              </ThemedView>
 
-      <ThemedView style={styles.pigMetaInfo}>
-        <ThemedView style={[
-          styles.categoryBadge,
-          pig.category === 'Adult' ? styles.adultBadge : styles.youngBadge
-        ]}>
-          <ThemedText style={[
-            styles.categoryText,
-            pig.category === 'Adult' ? styles.adultText : styles.youngText
-          ]}>
-            {pig.category}
-          </ThemedText>
-        </ThemedView>
+              <ThemedView style={styles.pigMetaInfo}>
+                <ThemedView style={[
+                  styles.categoryBadge,
+                  pig.category === 'Adult' ? styles.adultBadge : styles.youngBadge
+                ]}>
+                  <ThemedText style={[
+                    styles.categoryText,
+                    pig.category === 'Adult' ? styles.adultText : styles.youngText
+                  ]}>
+                    {pig.category}
+                  </ThemedText>
+                </ThemedView>
         <ThemedText style={styles.breedName} darkColor="#8E8E93" lightColor="#8E8E93">
           {pig.breed_name}
-        </ThemedText>
-      </ThemedView>
+                  </ThemedText>
+                </ThemedView>
 
-      <ThemedView style={styles.monitoringInfo}>
-        {monitoringTiming.lastMonitoredTime ? (
-          <ThemedView style={styles.monitoringTimeContainer}>
+              <ThemedView style={styles.monitoringInfo}>
+                {monitoringTiming.lastMonitoredTime ? (
+                  <ThemedView style={styles.monitoringTimeContainer}>
             <ThemedText style={styles.monitoringTimeLabel}>
               Last monitored: <ThemedText style={styles.monitoringTimeValue}>{monitoringTiming.lastMonitoredTime}</ThemedText>
-            </ThemedText>
-            {monitoringTiming.timeRemaining && (
+                    </ThemedText>
+                    {monitoringTiming.timeRemaining && (
               <ThemedText style={[styles.monitoringTimeLabel, styles.nextMonitoringLabel]}>
                 Next: <ThemedText style={styles.nextMonitoringValue}>{monitoringTiming.timeRemaining}</ThemedText>
-              </ThemedText>
-            )}
-          </ThemedView>
-        ) : (
+                      </ThemedText>
+                    )}
+                  </ThemedView>
+                ) : (
           <ThemedText style={styles.monitoringTimeLabel}>
             {monitoringTiming.canMonitor ? 
               'Ready for monitoring' : 
               `Starts at ${monitoringTiming.nextMonitoringTime}`
             }
-          </ThemedText>
-        )}
-      </ThemedView>
-    </ThemedView>
+                  </ThemedText>
+                )}
+              </ThemedView>
+                </ThemedView>
   </Animated.View>
 );
 
@@ -495,7 +495,7 @@ export default function DashboardScreen() {
       return ['High', 'Moderate'].includes(riskAnalysis.riskLevel) ? count + 1 : count;
     }, 0);
 
-    return (
+  return (
       <Link href="/(pigs)/notifications" asChild>
         <TouchableOpacity style={styles.floatingButton}>
           <ThemedView style={styles.notificationBadge}>
@@ -560,7 +560,7 @@ export default function DashboardScreen() {
             style={styles.headerIcon}
           />
           <ThemedView style={styles.headerTextContainer}>
-            <ThemedText style={styles.headerTitle}>ASF Monitor</ThemedText>
+            <ThemedText style={styles.headerTitle}>Thermo Track</ThemedText>
             <ThemedText style={styles.headerSubtitle}>
               African Swine Fever Monitoring System
             </ThemedText>

@@ -15,15 +15,18 @@ export async function initDatabase() {
 
   // Drop all existing tables
   await db.execAsync(`
+    
+    
+  `);
+  
+    /*
     DROP TABLE IF EXISTS ChecklistResults;
     DROP TABLE IF EXISTS checklist_records;
     DROP TABLE IF EXISTS monitoring_records;
     DROP TABLE IF EXISTS DailyMonitoring;
     DROP TABLE IF EXISTS reports;
     DROP TABLE IF EXISTS critical_time_windows;
-    
-  `);
-    /*DROP TABLE IF EXISTS Checklist;
+    DROP TABLE IF EXISTS Checklist;
     DROP TABLE IF EXISTS Pigs;
     DROP TABLE IF EXISTS Breeds;
     DROP TABLE IF EXISTS Settings; */
