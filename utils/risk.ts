@@ -83,26 +83,37 @@ export function calculateRiskLevel(
   // First check same-day progression
   const previousRecord = records.find(r => r.date === latestDate && r.id !== mostRecentMonitoringId);
   if (previousRecord) {
-    // Compare with previous session of the same day
+    // Compare with previous session of the same day (morning vs afternoon)
     const previousSymptoms = checklistRecords.filter(r => 
       r.monitoring_id === previousRecord.id && r.checked
     );
     
-    // Compare symptom counts
-    const currentSymptomCount = currentSymptoms.length;
-    const previousSymptomCount = previousSymptoms.length;
-    
-    console.log('Same day symptom comparison:', {
-      currentSymptomCount,
-      previousSymptomCount
+    // Get sets of symptoms for comparison
+    const currentSymptomSet = new Set(currentSymptoms.map(s => s.symptom));
+    const previousSymptomSet = new Set(previousSymptoms.map(s => s.symptom));
+
+    // Find new symptoms and persistent symptoms
+    const newSymptoms = [...currentSymptomSet].filter(s => !previousSymptomSet.has(s));
+    const persistentSymptoms = [...currentSymptomSet].filter(s => previousSymptomSet.has(s));
+
+    console.log('Same day symptom progression analysis:', {
+      currentSymptomCount: currentSymptoms.length,
+      previousSymptomCount: previousSymptoms.length,
+      newSymptoms,
+      persistentSymptoms
     });
 
-    if (currentSymptomCount > previousSymptomCount) {
-      progressionScore += 15; // Worsening condition in the same day
+    // Add points for new symptoms
+    if (newSymptoms.length > 0) {
+      progressionScore += 15; // Points for new symptoms
     }
 
-    // Analyze temperature trend in the same day
-    const tempTrend = latestTemp - previousRecord.temperature;
+    // Add points for persistent symptoms
+    if (persistentSymptoms.length > 0) {
+      progressionScore += 10; // Points for symptoms persisting from morning
+    }
+
+    // Compare temperature deviations
     const currentDeviation = Math.abs(tempDeviation);
     const previousDeviation = Math.abs(Math.max(
       previousRecord.temperature - maxTemp,
@@ -117,8 +128,20 @@ export function calculateRiskLevel(
       previousDeviation
     });
 
+    // Calculate temperature progression based on deviation increase
     if (currentDeviation > previousDeviation) {
-      progressionScore += 10; // Temperature deviation is worse
+      const deviationIncrease = currentDeviation - previousDeviation;
+      
+      // Add 10 points for every 0.5°C increase in deviation
+      const progressionPoints = Math.floor(deviationIncrease / 0.5) * 10;
+      progressionScore += progressionPoints;
+
+      console.log('Same day temperature progression calculation:', {
+        deviationIncrease,
+        progressionPoints,
+        currentDeviation,
+        previousDeviation
+      });
     }
   } else {
     // If no previous session today, compare with the last session from previous day
@@ -141,19 +164,29 @@ export function calculateRiskLevel(
         r.monitoring_id === previousDayLastSession.id && r.checked
       );
 
-      // Compare symptom counts
-      const currentSymptomCount = currentSymptoms.length;
-      const previousDaySymptomCount = previousDaySymptoms.length;
+      // Get sets of symptoms for comparison
+      const currentSymptomSet = new Set(currentSymptoms.map(s => s.symptom));
+      const previousDaySymptomSet = new Set(previousDaySymptoms.map(s => s.symptom));
 
-      console.log('Day-to-day symptom comparison:', {
-        currentDate: latestDate,
-        previousDate: previousDayDate,
-        currentSymptomCount,
-        previousDaySymptomCount
+      // Find new symptoms and persistent symptoms
+      const newSymptoms = [...currentSymptomSet].filter(s => !previousDaySymptomSet.has(s));
+      const persistentSymptoms = [...currentSymptomSet].filter(s => previousDaySymptomSet.has(s));
+
+      console.log('Day-to-day symptom progression analysis:', {
+        currentSymptomCount: currentSymptoms.length,
+        previousDaySymptomCount: previousDaySymptoms.length,
+        newSymptoms,
+        persistentSymptoms
       });
 
-      if (currentSymptomCount > previousDaySymptomCount) {
-        progressionScore += 15; // More symptoms than previous day
+      // Add points for new symptoms
+      if (newSymptoms.length > 0) {
+        progressionScore += 15; // Points for new symptoms
+      }
+
+      // Add points for persistent symptoms
+      if (persistentSymptoms.length > 0) {
+        progressionScore += 10; // Points for symptoms persisting from previous day
       }
 
       // Compare temperature deviations
@@ -171,8 +204,20 @@ export function calculateRiskLevel(
         previousDayDeviation
       });
 
+      // Calculate temperature progression based on deviation increase
       if (currentDeviation > previousDayDeviation) {
-        progressionScore += 10; // Temperature deviation is worse than previous day
+        const deviationIncrease = currentDeviation - previousDayDeviation;
+        
+        // Add 10 points for every 0.5°C increase in deviation
+        const progressionPoints = Math.floor(deviationIncrease / 0.5) * 10;
+        progressionScore += progressionPoints;
+
+        console.log('Day-to-day temperature progression calculation:', {
+          deviationIncrease,
+          progressionPoints,
+          currentDeviation,
+          previousDayDeviation
+        });
       }
     }
   }
@@ -192,11 +237,24 @@ export function calculateRiskLevel(
     totalScore
   });
 
-  // Determine risk level
+  // Determine risk level based only on total score
   let riskLevel: 'Low' | 'Moderate' | 'High';
-  if (totalScore >= 70) riskLevel = 'High';
-  else if (totalScore >= 40) riskLevel = 'Moderate';
-  else riskLevel = 'Low';
+  if (totalScore >= 71) {
+    riskLevel = 'High';
+  } else if (totalScore >= 31) {
+    riskLevel = 'Moderate';
+  } else {
+    riskLevel = 'Low';
+  }
+
+  console.log('Risk level determination:', {
+    tempDeviation,
+    totalScore,
+    riskLevel,
+    temperatureScore,
+    symptomScore,
+    progressionScore
+  });
 
   return {
     temperatureScore,
