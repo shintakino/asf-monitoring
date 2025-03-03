@@ -75,6 +75,9 @@ const AnimatedStatCard: React.FC<StatCardProps> = ({ icon, number, label, delay 
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
+  }));
+
+  const containerStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
   }));
 
@@ -84,12 +87,14 @@ const AnimatedStatCard: React.FC<StatCardProps> = ({ icon, number, label, delay 
   }, []);
 
   return (
-    <Animated.View style={animatedStyle}>
-      <ThemedView style={styles.statCard}>
-        <IconSymbol name={icon} size={32} color={icon === "pawprint.fill" ? "#FF9500" : icon === "checkmark.circle.fill" ? "#30D158" : "#FF453A"} />
-        <ThemedText style={styles.statNumber} type="title">{number}</ThemedText>
-        <ThemedText style={styles.statLabel}>{label}</ThemedText>
-      </ThemedView>
+    <Animated.View style={containerStyle}>
+      <Animated.View style={[animatedStyle]}>
+        <ThemedView style={styles.statCard}>
+          <IconSymbol name={icon} size={32} color={icon === "pawprint.fill" ? "#FF9500" : icon === "checkmark.circle.fill" ? "#30D158" : "#FF453A"} />
+          <ThemedText style={styles.statNumber} type="title">{number}</ThemedText>
+          <ThemedText style={styles.statLabel}>{label}</ThemedText>
+        </ThemedView>
+      </Animated.View>
     </Animated.View>
   );
 };
@@ -98,8 +103,11 @@ const AnimatedFilterButton: React.FC<FilterButtonProps> = ({ type, isActive, onP
   const scale = useSharedValue(1);
   const opacity = useSharedValue(0);
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  const scaleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
+  }));
+
+  const containerStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
   }));
 
@@ -115,29 +123,31 @@ const AnimatedFilterButton: React.FC<FilterButtonProps> = ({ type, isActive, onP
     scale.value = withSpring(1);
   };
 
-    return (
-    <Animated.View style={animatedStyle}>
-      <TouchableOpacity
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        style={[
-          styles.filterButton,
-          isActive && styles.filterButtonActive,
-        ]}
-      >
-        <IconSymbol
-          name={type === 'All' ? 'list.bullet' : type === 'Monitored' ? 'checkmark.circle.fill' : 'exclamationmark.circle.fill'}
-          size={16}
-          color={isActive ? '#007AFF' : '#8E8E93'}
-        />
-        <ThemedText style={[
-          styles.filterButtonText,
-          isActive && styles.filterButtonTextActive
-        ]}>
-          {type}
-        </ThemedText>
-      </TouchableOpacity>
+  return (
+    <Animated.View style={containerStyle}>
+      <Animated.View style={scaleStyle}>
+        <TouchableOpacity
+          onPress={onPress}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+          style={[
+            styles.filterButton,
+            isActive && styles.filterButtonActive,
+          ]}
+        >
+          <IconSymbol
+            name={type === 'All' ? 'list.bullet' : type === 'Monitored' ? 'checkmark.circle.fill' : 'exclamationmark.circle.fill'}
+            size={16}
+            color={isActive ? '#007AFF' : '#8E8E93'}
+          />
+          <ThemedText style={[
+            styles.filterButtonText,
+            isActive && styles.filterButtonTextActive
+          ]}>
+            {type}
+          </ThemedText>
+        </TouchableOpacity>
+      </Animated.View>
     </Animated.View>
   );
 };
@@ -516,17 +526,22 @@ export default function DashboardScreen() {
   useEffect(() => {
     const setupNotifications = async () => {
       try {
+        // Only request notification permissions and set up channels
         const permission = await registerForPushNotificationsAsync();
         if (!permission) {
           console.log('No notification permission');
           return;
         }
 
+        // Set up notification handler for local notifications
         setupBackgroundNotificationHandler();
 
+        // Schedule local notifications if we have data
         if (pigs.length > 0 && breeds.length > 0 && records && checklistRecords) {
-          await scheduleBackgroundHealthCheck(pigs, records, checklistRecords, breeds);
-          await scheduleRiskNotification(pigs, records, checklistRecords, breeds);
+          await Promise.all([
+            scheduleBackgroundHealthCheck(pigs, records, checklistRecords, breeds),
+            scheduleRiskNotification(pigs, records, checklistRecords, breeds),
+          ]);
         }
       } catch (error) {
         console.error('Error setting up notifications:', error);
@@ -534,19 +549,6 @@ export default function DashboardScreen() {
     };
     
     setupNotifications();
-  }, [pigs, breeds, records, checklistRecords]);
-
-  useEffect(() => {
-    if (pigs.length > 0 && breeds.length > 0 && records && checklistRecords) {
-      const updateRiskNotifications = async () => {
-        try {
-          await scheduleRiskNotification(pigs, records, checklistRecords, breeds);
-        } catch (error) {
-          console.error('Error updating risk notifications:', error);
-        }
-      };
-      updateRiskNotifications();
-    }
   }, [pigs, breeds, records, checklistRecords]);
 
   return (

@@ -53,57 +53,62 @@ export default function EditBreedScreen() {
     }
   }, [breed, isLoading]);
 
-  const validateForm = (showAll = true) => {
+  const validateName = async (name: string) => {
+    if (!name.trim()) {
+      return 'Breed name is required';
+    }
+    if (name.length < 2) {
+      return 'Name must be at least 2 characters';
+    }
+    if (name.length > 50) {
+      return 'Name must be less than 50 characters';
+    }
+
+    // Check for duplicate breeds (case-insensitive), excluding the current breed
+    const normalizedName = name.trim().toLowerCase();
+    const isDuplicate = breeds.some(b => 
+      b.id !== parseInt(id) && 
+      b.name.toLowerCase() === normalizedName
+    );
+    if (isDuplicate) {
+      return 'This breed name already exists';
+    }
+
+    return '';
+  };
+
+  const validateTemperature = (value: string, type: 'min' | 'max', reference?: number) => {
+    const temp = parseFloat(value);
+    if (isNaN(temp)) {
+      return 'Enter a valid number';
+    }
+    if (temp < 20 || temp > 50) {
+      return 'Must be between 20°C and 50°C';
+    }
+    if (type === 'max' && reference !== undefined && temp <= reference) {
+      return 'Must be higher than minimum';
+    }
+    return '';
+  };
+
+  const validateForm = async (showAll = true) => {
+    const nameError = await validateName(form.name);
+    const minAdultTemp = parseFloat(form.min_temp_adult);
+    const maxAdultTemp = parseFloat(form.max_temp_adult);
+    const minYoungTemp = parseFloat(form.min_temp_young);
+    const maxYoungTemp = parseFloat(form.max_temp_young);
+
     const errors = {
-      name: '',
-      min_temp_adult: '',
-      max_temp_adult: '',
-      min_temp_young: '',
-      max_temp_young: '',
+      name: showAll ? nameError : form.name ? nameError : '',
+      min_temp_adult: showAll ? validateTemperature(form.min_temp_adult, 'min') :
+        form.min_temp_adult ? validateTemperature(form.min_temp_adult, 'min') : '',
+      max_temp_adult: showAll ? validateTemperature(form.max_temp_adult, 'max', minAdultTemp) :
+        form.max_temp_adult ? validateTemperature(form.max_temp_adult, 'max', minAdultTemp) : '',
+      min_temp_young: showAll ? validateTemperature(form.min_temp_young, 'min') :
+        form.min_temp_young ? validateTemperature(form.min_temp_young, 'min') : '',
+      max_temp_young: showAll ? validateTemperature(form.max_temp_young, 'max', minYoungTemp) :
+        form.max_temp_young ? validateTemperature(form.max_temp_young, 'max', minYoungTemp) : '',
     };
-
-      if (!form.name.trim()) {
-      errors.name = 'Breed name is required';
-    } else if (form.name.length < 2) {
-      errors.name = 'Name must be at least 2 characters';
-    } else if (form.name.length > 50) {
-      errors.name = 'Name must be less than 50 characters';
-    } else if (breeds.some(b => b.id !== parseInt(id) && b.name.toLowerCase() === form.name.trim().toLowerCase())) {
-      errors.name = 'This breed name already exists';
-      }
-
-      const minAdultTemp = parseFloat(form.min_temp_adult);
-      const maxAdultTemp = parseFloat(form.max_temp_adult);
-      const minYoungTemp = parseFloat(form.min_temp_young);
-      const maxYoungTemp = parseFloat(form.max_temp_young);
-
-    if (isNaN(minAdultTemp)) {
-      errors.min_temp_adult = 'Enter a valid number';
-    } else if (minAdultTemp < 20 || minAdultTemp > 50) {
-      errors.min_temp_adult = 'Must be between 20°C and 50°C';
-    }
-
-    if (isNaN(maxAdultTemp)) {
-      errors.max_temp_adult = 'Enter a valid number';
-    } else if (maxAdultTemp < 20 || maxAdultTemp > 50) {
-      errors.max_temp_adult = 'Must be between 20°C and 50°C';
-    } else if (!isNaN(minAdultTemp) && maxAdultTemp <= minAdultTemp) {
-      errors.max_temp_adult = 'Must be higher than minimum';
-    }
-
-    if (isNaN(minYoungTemp)) {
-      errors.min_temp_young = 'Enter a valid number';
-    } else if (minYoungTemp < 20 || minYoungTemp > 50) {
-      errors.min_temp_young = 'Must be between 20°C and 50°C';
-    }
-
-    if (isNaN(maxYoungTemp)) {
-      errors.max_temp_young = 'Enter a valid number';
-    } else if (maxYoungTemp < 20 || maxYoungTemp > 50) {
-      errors.max_temp_young = 'Must be between 20°C and 50°C';
-    } else if (!isNaN(minYoungTemp) && maxYoungTemp <= minYoungTemp) {
-      errors.max_temp_young = 'Must be higher than minimum';
-    }
 
     setFormErrors(errors);
     return !Object.values(errors).some(error => error !== '');
@@ -118,11 +123,15 @@ export default function EditBreedScreen() {
   };
 
   useEffect(() => {
-    validateForm(false);
+    const validateAsync = async () => {
+      await validateForm(false);
+    };
+    validateAsync();
   }, [form]);
 
   const handleSubmitRequest = async () => {
-    if (!validateForm(true)) {
+    const isValid = await validateForm(true);
+    if (!isValid) {
       return;
     }
 

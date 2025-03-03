@@ -61,9 +61,24 @@ export default function EditPigScreen() {
     }
   }, [pig, isLoading]);
 
-  const validateName = (name: string) => {
-    if (!name.trim()) return 'Name is required';
-    if (name.length < 2) return 'Name must be at least 2 characters';
+  const validateName = async (name: string) => {
+    if (!name.trim()) {
+      return 'Name is required';
+    }
+    if (name.length < 2) {
+      return 'Name must be at least 2 characters';
+    }
+
+    // Check for duplicate names (case-insensitive), excluding the current pig
+    const normalizedName = name.trim().toLowerCase();
+    const isDuplicate = pigs.some(p => 
+      p.id !== parseInt(id) && 
+      p.name.toLowerCase() === normalizedName
+    );
+    if (isDuplicate) {
+      return 'A pig with this name already exists';
+    }
+
     return '';
   };
 
@@ -88,9 +103,11 @@ export default function EditPigScreen() {
     return '';
   };
 
-  const validateForm = (showAll = true) => {
+  const validateForm = async (showAll = true) => {
+    const nameError = await validateName(form.name);
+    
     const errors = {
-      name: showAll ? validateName(form.name) : form.name ? validateName(form.name) : '',
+      name: showAll ? nameError : form.name ? nameError : '',
       age: showAll ? validateAge(form.age) : form.age ? validateAge(form.age) : '',
       weight: showAll ? validateWeight(form.weight) : form.weight ? validateWeight(form.weight) : '',
       breed_id: showAll ? validateBreed(form.breed_id) : form.breed_id ? validateBreed(form.breed_id) : '',
@@ -114,7 +131,8 @@ export default function EditPigScreen() {
   };
 
   const handleSubmitRequest = async () => {
-    if (!validateForm(true)) {
+    const isValid = await validateForm(true);
+    if (!isValid) {
       return;
     }
 
@@ -156,9 +174,12 @@ export default function EditPigScreen() {
     }
   };
 
-  // Real-time validation
+  // Update useEffect to handle async validation
   useEffect(() => {
-    validateForm(false);
+    const validateAsync = async () => {
+      await validateForm(false);
+    };
+    validateAsync();
   }, [form]);
 
   return (

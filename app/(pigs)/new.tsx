@@ -14,7 +14,7 @@ import { ImagePickerButton } from '@/components/ImagePickerButton';
 import { DropdownSelect } from '@/components/DropdownSelect';
 
 export default function NewPigScreen() {
-  const { addPig } = usePigs();
+  const { addPig, pigs } = usePigs();
   const { breeds } = useBreeds();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,9 +37,15 @@ export default function NewPigScreen() {
     breed_id: '',
   });
 
-  const validateName = (name: string) => {
+  const validateName = async (name: string) => {
     if (!name.trim()) return 'Name is required';
     if (name.length < 2) return 'Name must be at least 2 characters';
+    
+    // Check for duplicate names (case-insensitive)
+    const normalizedName = name.trim().toLowerCase();
+    const isDuplicate = pigs.some(pig => pig.name.toLowerCase() === normalizedName);
+    if (isDuplicate) return 'A pig with this name already exists';
+    
     return '';
   };
 
@@ -64,9 +70,10 @@ export default function NewPigScreen() {
     return '';
   };
 
-  const validateForm = (showAll = true) => {
+  const validateForm = async (showAll = true) => {
+    const nameError = await validateName(form.name);
     const errors = {
-      name: showAll ? validateName(form.name) : form.name ? validateName(form.name) : '',
+      name: showAll ? nameError : form.name ? nameError : '',
       age: showAll ? validateAge(form.age) : form.age ? validateAge(form.age) : '',
       weight: showAll ? validateWeight(form.weight) : form.weight ? validateWeight(form.weight) : '',
       breed_id: showAll ? validateBreed(form.breed_id) : form.breed_id ? validateBreed(form.breed_id) : '',
@@ -77,7 +84,10 @@ export default function NewPigScreen() {
   };
 
   useEffect(() => {
-    validateForm(false);
+    const validateAsync = async () => {
+      await validateForm(false);
+    };
+    validateAsync();
   }, [form]);
 
   const handleImagePick = async () => {
@@ -94,7 +104,8 @@ export default function NewPigScreen() {
   };
 
   const handleSubmitRequest = async () => {
-    if (!validateForm(true)) {
+    const isValid = await validateForm(true);
+    if (!isValid) {
       return;
     }
 

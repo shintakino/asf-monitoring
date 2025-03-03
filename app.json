@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Thermo Track",
-    "slug": "thermo-track",
+    "slug": "asf-expo-v1",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/pig.png",
@@ -17,32 +17,32 @@
       }
     },
     "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/pig.png",
+        "backgroundColor": "#ffffff"
+      },
       "permissions": [
         "NOTIFICATIONS",
         "BACKGROUND_FETCH",
         "WAKE_LOCK"
       ],
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
       "package": "com.shintakino.asfexpov1",
       "useNextNotificationsApi": true
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/pig.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash.png",
-          "imageWidth": 300,
+          "image": "./assets/images/pig.png",
+          "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#1D3D47"
+          "backgroundColor": "#ffffff"
         }
       ],
       [
@@ -62,9 +62,16 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/notification-icon.png",
+          "icon": "./assets/images/pig.png",
           "color": "#ffffff",
-          "sounds": ["./assets/notification-sound.wav"]
+          "defaultChannel": "default",
+          "sounds": [
+            "./assets/sounds/notif1.wav",
+            "./assets/sounds/notif2.wav"
+          ],
+          "androidMode": "default",
+          "androidCollapsedTitle": "Thermo Track",
+          "androidImportance": "high"
         }
       ]
     ],

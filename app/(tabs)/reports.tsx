@@ -148,6 +148,23 @@ export default function ReportsScreen() {
     const riskAnalysis = calculateRiskLevel(pigRecords, pigChecklistRecords, breed, pig.category);
     const riskColor = getRiskColor(riskAnalysis.riskLevel);
 
+    // Calculate temperature-specific risk color
+    const getTemperatureRiskColor = () => {
+      if (!latestRecord) return '#8E8E93';
+      const minTemp = pig.category === 'Adult' ? breed.min_temp_adult : breed.min_temp_young;
+      const maxTemp = pig.category === 'Adult' ? breed.max_temp_adult : breed.max_temp_young;
+      const tempDeviation = Math.max(
+        latestRecord.temperature - maxTemp,
+        minTemp - latestRecord.temperature,
+        0
+      );
+      
+      if (tempDeviation >= 1.5) return getRiskColor('High');
+      if (tempDeviation >= 1.0) return getRiskColor('Moderate');
+      if (tempDeviation >= 0.5) return getRiskColor('Moderate');
+      return getRiskColor('Low');
+    };
+
     return (
       <Link
         href={{
@@ -198,7 +215,7 @@ export default function ReportsScreen() {
               <ThemedText style={styles.detailLabel}>Last Temperature</ThemedText>
               <ThemedText style={[
                 styles.temperatureValue,
-                { color: latestRecord ? getRiskColor(riskAnalysis.riskLevel) : '#8E8E93' }
+                { color: getTemperatureRiskColor() }
               ]}>
                 {latestRecord ? `${latestRecord.temperature}°C` : 'N/A'}
               </ThemedText>

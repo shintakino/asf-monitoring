@@ -10,7 +10,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { Checklist } from '@/utils/database';
 
 export default function NewChecklistScreen() {
-  const { addItem } = useChecklist();
+  const { addItem, items } = useChecklist();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -28,50 +28,77 @@ export default function NewChecklistScreen() {
     treatment_recommendation: '',
   });
 
-  // Real-time validation
-  useEffect(() => {
-    validateForm(false);
-  }, [form]);
+  const validateSymptom = async (symptom: string) => {
+    if (!symptom.trim()) {
+      return 'Symptom name is required';
+    }
+    if (symptom.length < 3) {
+      return 'Symptom must be at least 3 characters';
+    }
+    if (symptom.length > 100) {
+      return 'Symptom must be less than 100 characters';
+    }
 
-  const validateForm = (showAll = true) => {
+    // Check for duplicate symptoms (case-insensitive)
+    const normalizedSymptom = symptom.trim().toLowerCase();
+    const isDuplicate = items.some(item => item.symptom.toLowerCase() === normalizedSymptom);
+    if (isDuplicate) {
+      return 'This symptom already exists in the checklist';
+    }
+
+    return '';
+  };
+
+  const validateRiskWeight = (weight: string) => {
+    const riskWeight = parseInt(weight);
+    if (!weight) {
+      return 'Risk weight is required';
+    }
+    if (isNaN(riskWeight)) {
+      return 'Risk weight must be a number';
+    }
+    if (riskWeight < 1 || riskWeight > 5) {
+      return 'Risk weight must be between 1 and 5';
+    }
+    return '';
+  };
+
+  const validateTreatment = (treatment: string) => {
+    if (!treatment.trim()) {
+      return 'Treatment recommendation is required';
+    }
+    if (treatment.length < 10) {
+      return 'Treatment recommendation must be at least 10 characters';
+    }
+    return '';
+  };
+
+  const validateForm = async (showAll = true) => {
+    const symptomError = await validateSymptom(form.symptom);
+    
     const errors = {
-      symptom: '',
-      risk_weight: '',
-      treatment_recommendation: '',
+      symptom: showAll ? symptomError : form.symptom ? symptomError : '',
+      risk_weight: showAll ? validateRiskWeight(form.risk_weight) :
+        form.risk_weight ? validateRiskWeight(form.risk_weight) : '',
+      treatment_recommendation: showAll ? validateTreatment(form.treatment_recommendation) :
+        form.treatment_recommendation ? validateTreatment(form.treatment_recommendation) : '',
     };
-
-    // Symptom validation
-    if (!form.symptom.trim()) {
-      errors.symptom = 'Symptom name is required';
-    } else if (form.symptom.length < 3) {
-      errors.symptom = 'Symptom must be at least 3 characters';
-    } else if (form.symptom.length > 100) {
-      errors.symptom = 'Symptom must be less than 100 characters';
-    }
-
-    // Risk weight validation
-    const riskWeight = parseInt(form.risk_weight);
-    if (!form.risk_weight) {
-      errors.risk_weight = 'Risk weight is required';
-    } else if (isNaN(riskWeight)) {
-      errors.risk_weight = 'Risk weight must be a number';
-    } else if (riskWeight < 1 || riskWeight > 5) {
-      errors.risk_weight = 'Risk weight must be between 1 and 5';
-    }
-
-    // Treatment recommendation validation
-    if (!form.treatment_recommendation.trim()) {
-      errors.treatment_recommendation = 'Treatment recommendation is required';
-    } else if (form.treatment_recommendation.length < 10) {
-      errors.treatment_recommendation = 'Treatment recommendation must be at least 10 characters';
-    }
 
     setFormErrors(errors);
     return !Object.values(errors).some(error => error !== '');
   };
 
+  // Update useEffect to handle async validation
+  useEffect(() => {
+    const validateAsync = async () => {
+      await validateForm(false);
+    };
+    validateAsync();
+  }, [form]);
+
   const handleSubmitRequest = async () => {
-    if (!validateForm(true)) {
+    const isValid = await validateForm(true);
+    if (!isValid) {
       return;
     }
 

@@ -61,21 +61,31 @@ export default function PigReportScreen() {
 
         // Prepare temperature data
         const today = new Date();
-        const temperatureData = Array(7).fill(0);
-        const labels = [];
+        const labels = []; // Array to hold labels for the last 7 days
+        for (let i = 6; i >= 0; i--) {
+          const day = subDays(today, i);
+          labels.push(format(day, 'EEE')); // Add day labels (Mon, Tue, etc.)
+        }
+
+        const temperatureData = Array(7).fill([]);  // Initialize an array of arrays for multiple readings
 
         for (let i = 6; i >= 0; i--) {
           const day = subDays(today, i);
-          labels.push(format(day, 'EEE'));
+          temperatureData[6 - i] = []; // Initialize empty array for each day
         }
 
         records.forEach(record => {
           const recordDate = parseISO(record.date);
           const dayIndex = differenceInDays(today, recordDate);
           if (dayIndex >= 0 && dayIndex < 7) {
-            temperatureData[6 - dayIndex] = record.temperature;
+            temperatureData[6 - dayIndex].push(record.temperature); // Store all temperatures for the day
           }
         });
+
+        // Calculate average temperature for each day (or use the single reading if only one exists)
+        const averageTemperatureData = temperatureData.map(temps => 
+          temps.length > 0 ? temps.reduce((a: number, b: number) => a + b) / temps.length : 0
+        );
 
         // Prepare symptom data
         const symptomCounts = Array(7).fill(0);
@@ -144,35 +154,67 @@ export default function PigReportScreen() {
   if (!pig || !breed) return null;
 
   const latestRecord = records[0];
-  const symptomsCount = checklistRecords.filter(r => r.checked).length;
+  
+  // Get all records from the latest date
+  const latestDate = latestRecord?.date;
+  const latestDateRecords = records.filter(r => r.date === latestDate);
+  
+  // Get the most recent monitoring session for the latest date
+  const mostRecentMonitoringId = latestDateRecords.length > 1 ? 
+    latestDateRecords[0].id : // If there are two sessions, take the first one (most recent)
+    latestDateRecords[0]?.id; // If there's only one session, take it
+  
+  // Get symptoms only from the most recent monitoring session
+  const latestDateChecklistRecords = checklistRecords.filter(r => 
+    r.monitoring_id === mostRecentMonitoringId && r.checked
+  );
+  
+  // Count unique symptoms from the most recent session
+  const uniqueSymptoms = new Set(latestDateChecklistRecords.map(r => r.symptom));
+  const symptomsCount = uniqueSymptoms.size;
 
-  // Get the symptoms and their treatments
-  const symptomsDetails = checklistRecords
-    .filter(r => r.checked)
+  // Get the symptoms and their treatments from the most recent monitoring session
+  const symptomsDetails = latestDateChecklistRecords
     .map(r => ({
       symptom: r.symptom,
-      treatment: r.treatment_recommendation
-    }));
-
-  // Prepare data for the temperature history chart (Last 7 Days)
-  const temperatureData = Array(7).fill(0); // Initialize an array for 7 days
-  const labels = []; // Array to hold labels for the last 7 days
+      treatment: r.treatment_recommendation,
+      monitoringSession: latestDateRecords.findIndex(record => record.id === r.monitoring_id) + 1
+    }))
+    .sort((a, b) => a.symptom.localeCompare(b.symptom)); // Sort alphabetically
 
   // Get today's date and calculate the last 7 days
   const today = new Date();
+  const labels = []; // Array to hold labels for the last 7 days
   for (let i = 6; i >= 0; i--) {
     const day = subDays(today, i);
     labels.push(format(day, 'EEE')); // Add day labels (Mon, Tue, etc.)
   }
 
-  // Filter records for the last 7 days
+  // Filter records for the last 7 days - only most recent session per day
+  const recordsByDay = new Map<string, typeof records[0]>();
   records.forEach(record => {
     const recordDate = parseISO(record.date);
     const dayIndex = differenceInDays(today, recordDate);
-    if (dayIndex >= 0 && dayIndex < 7) { // Only consider the last 7 days
-      temperatureData[6 - dayIndex] = record.temperature; // Store temperature in the corresponding index
+    if (dayIndex >= 0 && dayIndex < 7) {
+      const dateKey = format(recordDate, 'yyyy-MM-dd');
+      // Only store the most recent record for each day
+      if (!recordsByDay.has(dateKey) || 
+          parseISO(recordsByDay.get(dateKey)!.date).getTime() < recordDate.getTime()) {
+        recordsByDay.set(dateKey, record);
+      }
     }
   });
+
+  // Prepare temperature data using only the most recent session per day
+  const temperatureData = Array(7).fill(0);
+  for (let i = 6; i >= 0; i--) {
+    const day = subDays(today, i);
+    const dateKey = format(day, 'yyyy-MM-dd');
+    const record = recordsByDay.get(dateKey);
+    if (record) {
+      temperatureData[6 - i] = record.temperature;
+    }
+  }
 
   // Check if there is any temperature data for the week
   const hasTemperatureData = temperatureData.some(temp => temp > 0);
@@ -185,22 +227,21 @@ export default function PigReportScreen() {
     return 'rgba(0, 255, 0, 1)'; // Green for normal temperatures
   });
 
-  // Prepare data for the bar chart (Last 7 Days Unique Symptoms)
-  const symptomCounts = Array(7).fill(0); // Initialize an array for 7 days
-  const symptomSet = Array.from({ length: 7 }, () => new Set()); // Set to track unique symptoms
+  // Prepare data for the bar chart (Last 7 Days Symptoms - most recent session only)
+  const dailySymptomCounts = Array(7).fill(0);
 
-  records.forEach(record => {
-    const recordDate = parseISO(record.date);
+  // Count symptoms for each day's most recent session
+  recordsByDay.forEach((record, dateKey) => {
+    const recordDate = parseISO(dateKey);
     const dayIndex = differenceInDays(today, recordDate);
-    if (dayIndex >= 0 && dayIndex < 7) { // Only consider the last 7 days
-      const checkedSymptoms = checklistRecords.filter(cr => cr.monitoring_id === record.id && cr.checked);
-      checkedSymptoms.forEach(symptom => symptomSet[6 - dayIndex].add(symptom.symptom)); // Store unique symptoms
+    if (dayIndex >= 0 && dayIndex < 7) {
+      const symptomsForDay = new Set(
+        checklistRecords
+          .filter(cr => cr.monitoring_id === record.id && cr.checked)
+          .map(cr => cr.symptom)
+      );
+      dailySymptomCounts[6 - dayIndex] = symptomsForDay.size;
     }
-  });
-
-  // Count unique symptoms for each day
-  symptomSet.forEach((symptoms, index) => {
-    symptomCounts[index] = symptoms.size; // Count unique symptoms
   });
 
   // Prepare data for the bar chart
@@ -208,9 +249,9 @@ export default function PigReportScreen() {
     labels: labels,
     datasets: [
       {
-        data: symptomCounts,
-        color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`, // Bar color
-        strokeWidth: 2, // Optional
+        data: dailySymptomCounts,
+        color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
+        strokeWidth: 2,
       },
     ],
   };
@@ -316,12 +357,16 @@ export default function PigReportScreen() {
           {/* Symptoms and Treatments Section */}
           {symptomsDetails.length > 0 && (
             <ThemedView style={styles.symptomsSection}>
-              <ThemedText style={styles.sectionTitle}>Symptoms & Treatments</ThemedText>
+              <ThemedText style={styles.sectionTitle}>
+                Current Symptoms & Treatments (Latest Monitoring)
+              </ThemedText>
               {symptomsDetails.map((detail, index) => (
                 <ThemedView key={index} style={styles.symptomCard}>
                   <ThemedView style={styles.symptomHeader}>
                     <IconSymbol name="bandage.fill" size={16} color="#FF453A" />
-                    <ThemedText style={styles.symptomName}>{detail.symptom}</ThemedText>
+                    <ThemedText style={styles.symptomName}>
+                      {detail.symptom}
+                    </ThemedText>
                   </ThemedView>
                   <ThemedText style={styles.treatmentText}>
                     Treatment: {detail.treatment}
@@ -333,7 +378,7 @@ export default function PigReportScreen() {
 
           {/* Temperature History Chart */}
           <ThemedView style={styles.chartContainer}>
-            <ThemedText style={styles.chartTitle}>Last 7 Days Temperature History</ThemedText>
+            <ThemedText style={styles.chartTitle}>Last 7 Days Temperature History (Latest Session)</ThemedText>
             {hasTemperatureData ? (
               <LineChart
                 data={{
@@ -341,8 +386,8 @@ export default function PigReportScreen() {
                   datasets: [
                     {
                       data: temperatureData,
-                      color: (opacity = 1) => `rgba(255, 99, 132, ${opacity})`, // Line color
-                      strokeWidth: 3, // Optional
+                      color: (opacity = 1) => `rgba(255, 99, 132, ${opacity})`,
+                      strokeWidth: 3,
                     },
                   ],
                 }}
@@ -735,6 +780,10 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 13,
+    color: '#8E8E93',
+  },
+  monitoringSession: {
+    fontSize: 12,
     color: '#8E8E93',
   },
 }); 
