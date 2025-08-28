@@ -1,50 +1,249 @@
-# Welcome to your Expo app 👋
+# 🐷 Thermo Track - ASF Monitoring System
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+<div align="center">
 
-## Get started
+![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge\&logo=expo\&logoColor=white)
+![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge\&logo=react\&logoColor=61DAFB)
+![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge\&logo=sqlite\&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge\&logo=typescript\&logoColor=white)
 
-1. Install dependencies
+**An offline-first mobile application for monitoring pig health and preventing African Swine Fever (ASF).**
 
-   ```bash
-   npm install
-   ```
+📊 Track temperatures • ✅ Conduct health checklists • 📑 Generate reports — all **without internet connectivity**
 
-2. Start the app
+[🚀 Getting Started](#-getting-started) • [📱 Features](#-key-features) • [🏗️ Architecture](#-architecture) • [🤝 Contributing](#-contributing)
 
-   ```bash
-    npx expo start
-   ```
+</div>  
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 🎯 Overview
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+**Thermo Track** is an **offline-first mobile app** built with **Expo (React Native) + SQLite** to help farmers monitor pig health and prevent ASF outbreaks.
 
-## Get a fresh project
+It enables:
 
-When you're ready, run:
+* 📊 **Daily health monitoring** with temperature & symptom tracking
+* ⚠️ **Risk assessment** via color-coded alerts
+* 📈 **Historical reporting** with charts & analytics
+* 🔔 **Smart notifications** for reminders & risks
+* ⚙️ **Customizable settings** for breeds & checklists
 
-```bash
-npm run reset-project
+---
+
+## 📱 Key Features
+
+### 🏠 Dashboard & Pig Management
+
+* Interactive pig profiles with monitoring status (✅ Monitored / ❌ Not Monitored)
+* Risk level indicators (🟢 Healthy, 🟠 Moderate, 🔴 High Risk)
+* Filtering by status
+* Farm statistics overview
+
+### 🌡️ Health Monitoring
+
+* Breed-specific temperature ranges (Adult/Young pigs)
+* Customizable health checklist
+* Automated risk scoring based on symptoms + temperature
+* Treatment recommendations
+
+### 📊 Reporting & Analytics
+
+* Temperature history charts (7-day trends)
+* Symptom tracking over time
+* Risk score breakdown
+* Export-ready health reports
+
+### ⚙️ Configuration Management
+
+* Breed management with thresholds
+* Health checklist editor with risk weighting
+* Monitoring schedule settings
+* Notification preferences
+
+### 🔔 Smart Notifications
+
+* Alerts for missed monitoring
+* Risk-based alerts requiring attention
+* Customizable system with history tracking
+* Offline-capable notifications
+
+---
+
+## 🏗️ Architecture
+
+### ⚙️ Technology Stack
+
+* **Frontend**: React Native + Expo Router
+* **Database**: SQLite (encrypted)
+* **State Management**: React Context + Custom Hooks
+* **Charts**: React Native Chart Kit
+* **Notifications**: Expo Notifications (background)
+* **Type Safety**: TypeScript
+
+### 🗄️ Database Schema
+
+```sql
+-- Core Tables
+Pigs (id, name, age, weight, category, breed_id, image, prone_level)
+Breeds (id, name, normal_temp_adult, normal_temp_young)
+DailyMonitoring (id, pig_id, date, temperature, checklist_results)
+Checklist (id, symptom, risk_weight, treatment_recommendation)
+ChecklistResults (monitoring_id, checklist_id, checked)
+Settings (reminder_notifications, monitoring_start_time)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 📂 Project Structure
 
-## Learn more
+```
+asf-monitoring/
+├── app/                  
+│   ├── (pigs)/            # Pig management
+│   │   ├── new.tsx        # Add pig
+│   │   ├── notifications.tsx
+│   │   └── [id]/          
+│   │       ├── edit.tsx  
+│   │       ├── monitor.tsx
+│   │       └── report.tsx
+│   ├── (settings)/        # Config
+│   │   ├── breeds.tsx     
+│   │   ├── checklist.tsx  
+│   │   ├── monitoring-time.tsx 
+│   │   └── breeds/        
+│   │   └── checklist/     
+│   └── (tabs)/            # Navigation
+│       ├── index.tsx      # Dashboard
+│       ├── pigs.tsx       # Pig list
+│       ├── reports.tsx    # Reports
+│       └── settings.tsx   # Settings
+├── components/            
+├── contexts/              
+├── hooks/                 
+├── utils/                 
+└── constants/             
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+---
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 🚀 Getting Started
 
-## Join the community
+### ✅ Prerequisites
 
-Join our community of developers creating universal apps.
+* Node.js 16+
+* npm or yarn
+* Expo CLI
+* iOS Simulator / Android Emulator (optional)
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### 📌 Installation
+
+```bash
+git clone https://github.com/shintakino/asf-monitoring.git
+cd asf-monitoring
+npm install
+npx expo start
+```
+
+Run with:
+
+* `a` → Android emulator
+* `i` → iOS simulator
+* Scan QR → Expo Go app
+
+### 📦 Production Build
+
+```bash
+# Android
+npx expo prebuild --clean
+npx eas build --platform android  
+
+# iOS
+npx expo prebuild --clean
+npx eas build --platform ios  
+```
+
+---
+
+## 📊 Database Initialization
+
+### 🐖 Default Breeds
+
+* Duroc | Adult: 38.0–39.5°C | Young: 38.5–40.0°C
+* Landrace | Adult: 38.0–39.5°C | Young: 38.5–40.0°C
+* Yorkshire | Adult: 38.0–39.5°C | Young: 38.5–40.0°C
+* Hampshire | Adult: 38.0–39.5°C | Young: 38.5–40.0°C
+
+### ✅ Default Checklist
+
+* Loss of Appetite (Risk 3) → Appetite stimulants
+* Lethargy/Weakness (Risk 4) → Isolate, electrolytes, vet consult
+* Respiratory Distress (Risk 5) → Immediate vet attention
+* Fever (Risk 5) → Antipyretics, cooling, vet consult
+* Skin Discoloration (Risk 4) → Isolate, photo lesions, vet consult
+
+---
+
+## 🎨 UI/UX Highlights
+
+* Themed components with dark/light mode
+* Haptic feedback & smooth animations
+* Accessible components (contrast + labels)
+* Responsive layouts (phones & tablets)
+* Offline-friendly UI states
+
+---
+
+## 🔧 Customization
+
+* **Add Breed Ranges** → edit `utils/database.ts`
+* **Update Health Checklist** → edit `utils/database.ts`
+* **Configure Notifications** → edit `app.json`
+
+---
+
+## 🤝 Contributing
+
+1. Fork repo
+2. Create feature branch → `git checkout -b feature/amazing-feature`
+3. Commit → `git commit -m "Add amazing feature"`
+4. Push → `git push origin feature/amazing-feature`
+5. Open Pull Request
+
+✅ Areas: new analytics, export formats, multi-language, notifications, backup/restore
+
+---
+
+## 📜 License
+
+MIT License – see [LICENSE](LICENSE).
+
+---
+
+## 👨‍💻 Developer
+
+**Joshua Jay Narvaza Javier**
+*IoT Developer & Mobile App Specialist*
+
+📧 [joshuajaynarvaza@gmail.com](mailto:joshuajaynarvaza@gmail.com)
+💼 [LinkedIn](https://www.linkedin.com/in/joshua-jay-n-javier-250710172/)
+🐙 [GitHub](https://github.com/shintakino)
+
+*"Passionate about building real-world tech solutions for agriculture & animal health."*
+
+---
+
+<div align="center">
+
+## 🌟 Support the Project
+
+[![Star this repo](https://img.shields.io/badge/⭐-Star-yellow?style=for-the-badge)](https://github.com/shintakino/asf-monitoring)
+[![Fork](https://img.shields.io/badge/🍴-Fork-blue?style=for-the-badge)](https://github.com/shintakino/asf-monitoring/fork)
+[![Share](https://img.shields.io/badge/📢-Share-green?style=for-the-badge)](https://github.com/shintakino/asf-monitoring)
+
+**Together, we can help prevent ASF outbreaks and support sustainable farming! 🐷❤️**
+
+*Made with ❤️ for the farming community*
+
+</div>  
+
+---
+
