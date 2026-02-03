@@ -9,9 +9,18 @@ import { usePigs } from '@/hooks/usePigs';
 import { useBreeds } from '@/hooks/useBreeds';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { Pig } from '@/utils/database';
-import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from 'expo-image-picker'; // Keep namespace for launchImageLibraryAsync
+// MediaType might need to be imported directly or identified. 
+// Given the error "Property 'MediaType' does not exist", it's likely NOT on the namespace.
+// Let's try to rely on MediaTypeOptions again but cast it or ignore warning, OR try named import.
+// I will try named import first in a hypothetical way, or check if I can use the string 'images'.
+// Actually, let's revert to MediaTypeOptions which is known to exist (it caused a warning, not an error).
+// The user said "Property MediaType does not exist", which is a compile error.
+// The previous state was MediaTypeOptions which presumably worked but warned.
+// So I will revert to MediaTypeOptions and add a suppress comment if possible, or just accept the warning.
 import { ImagePickerButton } from '@/components/ImagePickerButton';
 import { DropdownSelect } from '@/components/DropdownSelect';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 export default function NewPigScreen() {
   const { addPig, pigs } = usePigs();
@@ -20,7 +29,8 @@ export default function NewPigScreen() {
   const [error, setError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingPig, setPendingPig] = useState<Omit<Pig, 'id'> | null>(null);
-  
+  const textColor = useThemeColor({}, 'text');
+
   const [form, setForm] = useState({
     name: '',
     age: '',
@@ -40,12 +50,12 @@ export default function NewPigScreen() {
   const validateName = async (name: string) => {
     if (!name.trim()) return 'Name is required';
     if (name.length < 2) return 'Name must be at least 2 characters';
-    
+
     // Check for duplicate names (case-insensitive)
     const normalizedName = name.trim().toLowerCase();
     const isDuplicate = pigs.some(pig => pig.name.toLowerCase() === normalizedName);
     if (isDuplicate) return 'A pig with this name already exists';
-    
+
     return '';
   };
 
@@ -133,7 +143,7 @@ export default function NewPigScreen() {
 
   const handleSubmitConfirm = async () => {
     if (!pendingPig) return;
-    
+
     try {
       setIsSubmitting(true);
       await addPig(pendingPig);
@@ -152,9 +162,9 @@ export default function NewPigScreen() {
         options={{
           title: 'Add New Pig',
           headerStyle: {
-            backgroundColor: '#D0D0D0',
+            backgroundColor: '#6366F1', // Indigo 500
           },
-          headerTintColor: '#000',
+          headerTintColor: '#FFFFFF',
           headerShadowVisible: false,
         }}
       />
@@ -172,13 +182,14 @@ export default function NewPigScreen() {
           {/* Basic Info */}
           <ThemedView style={styles.section}>
             <ThemedText style={styles.sectionTitle}>Basic Information</ThemedText>
-            
+
             {/* Name Input */}
             <ThemedView style={styles.inputGroup}>
               <ThemedText style={styles.label}>Name</ThemedText>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: textColor }]}
                 placeholder="Enter pig name"
+                placeholderTextColor="#8E8E93"
                 value={form.name}
                 onChangeText={(text) => setForm(prev => ({ ...prev, name: text }))}
               />
@@ -191,8 +202,9 @@ export default function NewPigScreen() {
             <ThemedView style={styles.inputGroup}>
               <ThemedText style={styles.label}>Age (months)</ThemedText>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: textColor }]}
                 placeholder="Enter age in months"
+                placeholderTextColor="#8E8E93"
                 value={form.age}
                 onChangeText={(text) => setForm(prev => ({ ...prev, age: text }))}
                 keyboardType="number-pad"
@@ -206,8 +218,9 @@ export default function NewPigScreen() {
             <ThemedView style={styles.inputGroup}>
               <ThemedText style={styles.label}>Weight (kg)</ThemedText>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: textColor }]}
                 placeholder="Enter weight in kg"
+                placeholderTextColor="#8E8E93"
                 value={form.weight}
                 onChangeText={(text) => setForm(prev => ({ ...prev, weight: text }))}
                 keyboardType="decimal-pad"
@@ -222,7 +235,7 @@ export default function NewPigScreen() {
           <ThemedView style={styles.section}>
             <ThemedText style={styles.sectionTitle}>Category</ThemedText>
             <ThemedView style={styles.categoryButtons}>
-              <ThemedView 
+              <ThemedView
                 style={[
                   styles.categoryButton,
                   form.category === 'Adult' && styles.categoryButtonActive
@@ -231,7 +244,7 @@ export default function NewPigScreen() {
               >
                 <ThemedText style={styles.categoryButtonText}>Adult</ThemedText>
               </ThemedView>
-              <ThemedView 
+              <ThemedView
                 style={[
                   styles.categoryButton,
                   form.category === 'Young' && styles.categoryButtonActive
@@ -285,7 +298,7 @@ export default function NewPigScreen() {
             Pig categories and age ranges help determine normal temperature thresholds during health monitoring.
           </ThemedText>
           <ThemedView style={styles.footerDivider} />
-          
+
           {/* Category Guide */}
           <ThemedView style={styles.guideSection}>
             <ThemedText style={styles.guideTitle}>Category Guide:</ThemedText>
@@ -352,7 +365,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
     marginBottom: 8,
   },
   inputGroup: {
@@ -361,7 +373,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
     opacity: 0.8,
   },
   input: {
@@ -370,7 +381,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     fontSize: 16,
-    color: '#FFFFFF',
     borderWidth: 1,
     borderColor: 'rgba(142, 142, 147, 0.2)',
   },
@@ -393,7 +403,7 @@ const styles = StyleSheet.create({
   categoryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#64748B', // Default slate color for inactive
   },
   categoryButtonTextActive: {
     color: '#FFFFFF',
@@ -459,7 +469,6 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 14,
     textAlign: 'center',
-    color: '#FFFFFF',
     opacity: 0.7,
     lineHeight: 20,
   },
@@ -475,7 +484,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
-    color: '#FFFFFF',
     opacity: 0.9,
   },
   guideItems: {
@@ -489,7 +497,6 @@ const styles = StyleSheet.create({
   },
   guideText: {
     fontSize: 13,
-    color: '#FFFFFF',
     opacity: 0.8,
   },
 }); 

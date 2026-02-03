@@ -1,6 +1,6 @@
 import React from 'react';
 import { useState, useCallback } from 'react';
-import { StyleSheet, Dimensions, Image, TextInput, ActivityIndicator, ScrollView, Pressable } from 'react-native';
+import { StyleSheet, Dimensions, Image, TextInput, ActivityIndicator, ScrollView, Pressable, View } from 'react-native';
 import { Link } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -170,7 +170,7 @@ export default function PigsScreen() {
     searchPigs(query);
   };
 
-  const filteredPigs = pigs.filter(pig => 
+  const filteredPigs = pigs.filter(pig =>
     categoryFilter === 'All' || pig.category === categoryFilter
   );
 
@@ -195,24 +195,24 @@ export default function PigsScreen() {
   return (
     <>
       <ParallaxScrollView
-        headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
+        headerBackgroundColor={{ light: '#6366F1', dark: '#1E293B' }}
         headerImage={
-          <ThemedView style={styles.headerContent}>
+          <View style={styles.headerContent}>
             <Image
               source={require('@/assets/images/pig.png')}
               style={styles.headerIcon}
             />
-            <ThemedView style={styles.headerTextContainer}>
+            <View style={styles.headerTextContainer}>
               <ThemedText style={styles.headerTitle}>Pig Management</ThemedText>
               <ThemedText style={styles.headerSubtitle}>
                 Monitor and track your pigs' health
               </ThemedText>
-            </ThemedView>
+            </View>
             <Link href="/(pigs)/new" style={styles.addButton}>
-              <IconSymbol name="plus.circle.fill" size={20} color="#007AFF" />
+              <IconSymbol name="plus.circle.fill" size={20} color="#FFFFFF" />
               <ThemedText style={styles.addButtonText}>Add New Pig</ThemedText>
             </Link>
-          </ThemedView>
+          </View>
         }
       >
         <ThemedView style={styles.container}>
@@ -278,7 +278,7 @@ export default function PigsScreen() {
       </ParallaxScrollView>
 
       <Link href="/(pigs)/new" asChild>
-        <AnimatedPressable 
+        <AnimatedPressable
           entering={FadeInUp.delay(500).springify()}
           style={styles.floatingButton}
           android_ripple={{ color: 'rgba(255, 255, 255, 0.2)', borderless: true }}
@@ -312,34 +312,41 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 16,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
   },
   headerIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     marginBottom: 8,
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   headerTextContainer: {
+    width: '100%',
     alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 10,
   },
   headerTitle: {
-    paddingTop: 3,
     fontSize: 28,
-    fontWeight: 'bold',
+    lineHeight: 34,
+    textAlign: 'center',
+    fontWeight: '800',
     color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.15)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
+    fontWeight: '500',
   },
   searchContainer: {
     gap: 16,
@@ -349,9 +356,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(142, 142, 147, 0.12)',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 16,
     gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(142, 142, 147, 0.1)',
   },
   searchInput: {
     flex: 1,
@@ -366,33 +375,38 @@ const styles = StyleSheet.create({
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: 'rgba(142, 142, 147, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(142, 142, 147, 0.1)',
+    borderColor: 'transparent',
     gap: 6,
   },
   filterButtonActive: {
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-    borderColor: '#007AFF',
+    backgroundColor: '#6366F1', // Indigo 500
   },
   filterButtonText: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: '#64748B', // Slate 500
+    fontWeight: '500',
   },
   filterButtonTextActive: {
-    color: '#007AFF',
+    color: '#FFFFFF',
     fontWeight: '600',
   },
   pigCard: {
-    borderRadius: 16,
+    borderRadius: 24,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(142, 142, 147, 0.1)',
+    borderColor: 'rgba(150, 150, 150, 0.1)',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   pigCardContent: {
     flexDirection: 'row',
@@ -403,12 +417,12 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   pigImageContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: 'rgba(142, 142, 147, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   pigImage: {
     width: '100%',
@@ -417,14 +431,14 @@ const styles = StyleSheet.create({
   pigImagePlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(142, 142, 147, 0.12)',
+    backgroundColor: '#F1F5F9', // Slate 100
     justifyContent: 'center',
     alignItems: 'center',
   },
   pigImageInitial: {
     fontSize: 24,
-    fontWeight: '600',
-    color: '#8E8E93',
+    fontWeight: '700',
+    color: '#64748B', // Slate 500
   },
   pigInfo: {
     flex: 1,
@@ -440,28 +454,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   categoryBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 100,
     borderWidth: 1,
   },
   adultBadge: {
-    backgroundColor: 'rgba(48, 209, 88, 0.1)',
-    borderColor: 'rgba(48, 209, 88, 0.3)',
+    backgroundColor: '#F0F9FF', // Sky 50
+    borderColor: 'transparent',
   },
   youngBadge: {
-    backgroundColor: 'rgba(255, 149, 0, 0.1)',
-    borderColor: 'rgba(255, 149, 0, 0.3)',
+    backgroundColor: '#FFFBEB', // Amber 50
+    borderColor: 'transparent',
   },
   categoryText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   adultText: {
-    color: '#30D158',
+    color: '#0EA5E9', // Sky 500
   },
   youngText: {
-    color: '#FF9500',
+    color: '#D97706', // Amber 600
   },
   pigMetaInfo: {
     flexDirection: 'row',
@@ -470,7 +484,7 @@ const styles = StyleSheet.create({
   },
   breedName: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: '#64748B', // Slate 500
   },
   pigActions: {
     flexDirection: 'row',
@@ -480,7 +494,7 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    backgroundColor: '#F1F5F9', // Slate 100
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -489,13 +503,13 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#007AFF',
+    color: '#475569', // Slate 600
   },
   deleteButton: {
-    backgroundColor: 'rgba(255, 69, 58, 0.1)',
+    backgroundColor: '#FEF2F2', // Red 50
   },
   deleteButtonText: {
-    color: '#FF453A',
+    color: '#EF4444', // Red 500
   },
   loadingContainer: {
     flex: 1,
@@ -508,47 +522,53 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
-    backgroundColor: 'rgba(255, 69, 58, 0.1)',
+    backgroundColor: '#FEF2F2',
     borderRadius: 16,
     gap: 12,
   },
   errorText: {
     fontSize: 16,
-    color: '#FF453A',
+    color: '#EF4444',
     textAlign: 'center',
   },
   emptyState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
-    backgroundColor: 'rgba(142, 142, 147, 0.08)',
-    borderRadius: 20,
+    padding: 40,
+    backgroundColor: 'rgba(150, 150, 150, 0.05)',
+    borderRadius: 24,
     marginTop: 32,
-    minHeight: 400,
+    minHeight: 300,
+    borderWidth: 2,
+    borderColor: 'rgba(150, 150, 150, 0.1)',
+    borderStyle: 'dashed',
   },
   emptyStateTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     marginTop: 16,
     marginBottom: 8,
+    color: '#64748B',
   },
   emptyStateText: {
-    fontSize: 16,
+    fontSize: 15,
     textAlign: 'center',
-    opacity: 0.7,
+    opacity: 0.8,
     marginBottom: 24,
+    lineHeight: 22,
+    color: '#64748B',
   },
   emptyStateButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#6366F1', // Indigo 500
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: 100,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   emptyStateButtonText: {
     color: '#FFFFFF',
@@ -559,7 +579,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pigsListContent: {
-    gap: 12,
+    gap: 16,
+    paddingBottom: 100,
   },
   floatingButton: {
     position: 'absolute',
@@ -571,27 +592,31 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#6366F1', // Indigo 500
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.2)',
+    shadowColor: '#6366F1',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 8,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
     elevation: 8,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 122, 255, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingVertical: 8,
+    borderRadius: 24,
     gap: 6,
-    marginTop: 0,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   addButtonText: {
     fontSize: 14,

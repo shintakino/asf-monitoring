@@ -11,33 +11,22 @@ import { registerBackgroundTasks } from '@/utils/notifications';
 import { Slot } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import Splash from './components/Splash';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [isReady, setIsReady] = useState(false);
-  const [dbInitialized, setDbInitialized] = useState(false);
   const [fontsLoaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    ...Ionicons.font,
+    ...MaterialIcons.font,
   });
 
   useEffect(() => {
-    async function initDB() {
-      try {
-        const db = await SQLite.openDatabaseAsync('asf_monitor.db');
-        await db.execAsync('PRAGMA journal_mode = WAL');
-        await db.execAsync('PRAGMA foreign_keys = ON');
-        setDbInitialized(true);
-      } catch (error) {
-        console.error('Failed to initialize database:', error);
-      }
-    }
-
-    if (fontsLoaded && !dbInitialized) {
-      initDB();
-    } else if (fontsLoaded && dbInitialized) {
+    if (fontsLoaded) {
       setIsReady(true);
     }
-  }, [fontsLoaded, dbInitialized]);
+  }, [fontsLoaded]);
 
   useEffect(() => {
     // Register background tasks when app starts

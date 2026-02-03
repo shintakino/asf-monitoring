@@ -3,7 +3,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { SymbolWeight } from 'expo-symbols';
 import React from 'react';
-import { OpaqueColorValue, StyleProp, ViewStyle } from 'react-native';
+import { OpaqueColorValue, StyleProp, TextStyle, ViewStyle } from 'react-native';
 
 // Add your SFSymbol to MaterialIcons mappings here.
 const MAPPING = {
@@ -13,6 +13,28 @@ const MAPPING = {
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  'chevron.left': 'chevron-left',
+  'bell.fill': 'notifications',
+  'bell.badge.fill': 'notifications-active',
+  'exclamationmark.triangle.fill': 'warning',
+  'exclamationmark.circle.fill': 'error',
+  'clock.fill': 'schedule',
+  'clock': 'schedule',
+  'checkmark.shield.fill': 'verified-user',
+  'info.circle.fill': 'info',
+  'arrow.right': 'arrow-forward',
+  'thermometer': 'thermostat',
+  'bandage': 'healing',
+  'list.bullet': 'list',
+  'person.2.fill': 'people',
+  'person.fill': 'person',
+  'pencil': 'edit',
+  'trash': 'delete',
+  'pawprint.fill': 'pets',
+  'checkmark.circle.fill': 'check-circle',
+  'plus.circle.fill': 'add-circle',
+  'magnifyingglass': 'search',
+  'wifi.slash': 'wifi-off',
 } as Partial<
   Record<
     import('expo-symbols').SymbolViewProps['name'],
@@ -36,7 +58,7 @@ export function IconSymbol({
   name: IconSymbolName;
   size?: number;
   color: string | OpaqueColorValue;
-  style?: StyleProp<ViewStyle>;
+  style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
   return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;

@@ -15,7 +15,7 @@ import { useSettings } from '@/hooks/useSettings';
 import { calculateRiskLevel, getRiskColor } from '@/utils/risk';
 import { useBreeds } from '@/hooks/useBreeds';
 import { useMonitoring } from '@/hooks/useMonitoring';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { registerForPushNotificationsAsync, scheduleRiskNotification, scheduleBackgroundHealthCheck, setupBackgroundNotificationHandler } from '@/utils/notifications';
 import Animated, {
   FadeInDown,
@@ -500,37 +500,7 @@ export default function DashboardScreen() {
     </ThemedView>
   );
 
-  const renderFloatingNotification = () => {
-    const riskPigsCount = pigs.reduce((count, pig) => {
-      const breed = breeds.find(b => b.id === pig.breed_id);
-      if (!breed) return count;
 
-      const pigRecords = records?.filter(r => r.pig_id === pig.id) || [];
-      const pigChecklistRecords = checklistRecords?.filter(r =>
-        pigRecords.some(pr => pr.id === r.monitoring_id)
-      ) || [];
-
-      const riskAnalysis = calculateRiskLevel(pigRecords, pigChecklistRecords, breed, pig.category);
-      return ['High', 'Moderate'].includes(riskAnalysis.riskLevel) ? count + 1 : count;
-    }, 0);
-
-    return (
-      <Link href="/(pigs)/notifications" asChild>
-        <TouchableOpacity style={styles.floatingButton}>
-          <ThemedView style={styles.notificationBadge}>
-            <Ionicons name="notifications" size={24} color="#FFFFFF" />
-            {riskPigsCount > 0 && (
-              <ThemedView style={styles.notificationCount}>
-                <ThemedText style={styles.notificationCountText}>
-                  {riskPigsCount}
-                </ThemedText>
-              </ThemedView>
-            )}
-          </ThemedView>
-        </TouchableOpacity>
-      </Link>
-    );
-  };
 
   useEffect(() => {
     const setupNotifications = async () => {
@@ -565,22 +535,54 @@ export default function DashboardScreen() {
       <ParallaxScrollView
         headerBackgroundColor={{ light: '#6366F1', dark: '#1E293B' }}
         headerImage={
-          <ThemedView style={styles.headerContent}>
+          <View style={styles.headerContent}>
+            <Link href="/(pigs)/notifications" asChild>
+              <TouchableOpacity style={styles.headerNotificationButton}>
+                <View>
+                  <MaterialIcons name="notifications-none" size={28} color="#FFFFFF" />
+                  {pigs.reduce((count, pig) => {
+                    const breed = breeds.find(b => b.id === pig.breed_id);
+                    if (!breed) return count;
+                    const pigRecords = records?.filter(r => r.pig_id === pig.id) || [];
+                    const pigChecklistRecords = checklistRecords?.filter(r =>
+                      pigRecords.some(pr => pr.id === r.monitoring_id)
+                    ) || [];
+                    const riskAnalysis = calculateRiskLevel(pigRecords, pigChecklistRecords, breed, pig.category);
+                    return ['High', 'Moderate'].includes(riskAnalysis.riskLevel) ? count + 1 : count;
+                  }, 0) > 0 && (
+                      <View style={styles.notificationCount}>
+                        <ThemedText style={styles.notificationCountText}>
+                          {pigs.reduce((count, pig) => {
+                            const breed = breeds.find(b => b.id === pig.breed_id);
+                            if (!breed) return count;
+                            const pigRecords = records?.filter(r => r.pig_id === pig.id) || [];
+                            const pigChecklistRecords = checklistRecords?.filter(r =>
+                              pigRecords.some(pr => pr.id === r.monitoring_id)
+                            ) || [];
+                            const riskAnalysis = calculateRiskLevel(pigRecords, pigChecklistRecords, breed, pig.category);
+                            return ['High', 'Moderate'].includes(riskAnalysis.riskLevel) ? count + 1 : count;
+                          }, 0)}
+                        </ThemedText>
+                      </View>
+                    )}
+                </View>
+              </TouchableOpacity>
+            </Link>
             <Image
               source={require('@/assets/images/pig.png')}
               style={styles.headerIcon}
             />
-            <ThemedView style={styles.headerTextContainer}>
+            <View style={styles.headerTextContainer}>
               <ThemedText style={styles.headerTitle}>Thermo Track</ThemedText>
               <ThemedText style={styles.headerSubtitle}>
                 African Swine Fever Monitoring System
               </ThemedText>
-            </ThemedView>
-            <ThemedView style={styles.headerBadge}>
+            </View>
+            <View style={styles.headerBadge}>
               <IconSymbol name="wifi.slash" size={16} color="#FF9500" />
               <ThemedText style={styles.headerBadgeText}>Offline Mode</ThemedText>
-            </ThemedView>
-          </ThemedView>
+            </View>
+          </View>
         }
       >
         <ThemedView style={styles.statsContainer}>
@@ -653,8 +655,7 @@ export default function DashboardScreen() {
             </ScrollView>
           )}
         </ThemedView>
-      </ParallaxScrollView>
-      {renderFloatingNotification()}
+      </ParallaxScrollView >
     </>
   );
 }
@@ -677,11 +678,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.2)',
   },
   headerTextContainer: {
+    width: '100%',
     alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 10,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 28,
+    lineHeight: 34,
+    textAlign: 'center',
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.5,
@@ -717,6 +722,7 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
+
   statCard: {
     flex: 1,
     padding: 16,
@@ -1036,47 +1042,29 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  floatingButton: {
+  headerNotificationButton: {
     position: 'absolute',
-    top: 60,
+    top: 50,
     right: 20,
-    zIndex: 1000,
-  },
-  notificationBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#6366F1', // Indigo 500
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.2)',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    zIndex: 10,
+    padding: 8,
   },
   notificationCount: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: '#EF4444', // Red 500
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#6366F1', // Match header bg for seamless look
   },
   notificationCountText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
   },
 });

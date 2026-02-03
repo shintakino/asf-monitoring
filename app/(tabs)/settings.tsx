@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Dimensions, Image } from 'react-native';
+import { StyleSheet, Dimensions, Image, View } from 'react-native';
 import { Link } from 'expo-router';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
@@ -9,24 +9,24 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 export default function SettingsScreen() {
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
+      headerBackgroundColor={{ light: '#6366F1', dark: '#1E293B' }}
       headerImage={
-        <ThemedView style={styles.headerContent}>
-          <Image 
+        <View style={styles.headerContent}>
+          <Image
             source={require('@/assets/images/pig.png')}
             style={styles.headerIcon}
           />
-          <ThemedView style={styles.headerTextContainer}>
+          <View style={styles.headerTextContainer}>
             <ThemedText style={styles.headerTitle}>Settings</ThemedText>
             <ThemedText style={styles.headerSubtitle}>
               Configure your monitoring preferences
             </ThemedText>
-          </ThemedView>
-          <ThemedView style={styles.headerBadge}>
-            <IconSymbol name="gearshape.fill" size={16} color="#007AFF" />
+          </View>
+          <View style={styles.headerBadge}>
+            <IconSymbol name="gearshape.fill" size={16} color="#FFFFFF" />
             <ThemedText style={styles.headerBadgeText}>Configuration</ThemedText>
-          </ThemedView>
-        </ThemedView>
+          </View>
+        </View>
       }>
       <ThemedView style={styles.container}>
         <ThemedText type="title" style={styles.title}>Settings</ThemedText>
@@ -101,48 +101,57 @@ const { width } = Dimensions.get('window');
 const styles = StyleSheet.create({
   headerContent: {
     paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 16,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
   },
   headerIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     marginBottom: 8,
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   headerTextContainer: {
+    width: '100%',
     alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 10,
   },
   headerTitle: {
-    paddingTop: 3,
     fontSize: 28,
-    fontWeight: 'bold',
+    lineHeight: 34,
+    textAlign: 'center',
+    fontWeight: '800',
     color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.15)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
+    fontWeight: '500',
   },
   headerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 122, 255, 0.15)',
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 16,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 24,
     gap: 6,
-    marginTop: 2,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   headerBadgeText: {
     fontSize: 13,
-    color: '#007AFF',
+    color: '#FFFFFF',
     fontWeight: '600',
   },
   container: {

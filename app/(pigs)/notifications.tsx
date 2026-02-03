@@ -53,7 +53,7 @@ export default function NotificationsScreen() {
         if (!breed) return null;
 
         const pigRecords = records.filter(r => r.pig_id === pig.id);
-        const pigChecklistRecords = checklistRecords.filter(r => 
+        const pigChecklistRecords = checklistRecords.filter(r =>
           pigRecords.some(pr => pr.id === r.monitoring_id)
         );
 
@@ -70,7 +70,7 @@ export default function NotificationsScreen() {
         if (!pig) return null;
 
         // Check if we already have a recent notification (within last hour) for this pig with same risk level
-        const hasRecentNotification = currentHistory.some(notification => 
+        const hasRecentNotification = currentHistory.some(notification =>
           notification.pigIds.includes(pig.id) &&
           notification.type === (pig.riskLevel === 'High' ? 'high-risk' : 'moderate-risk') &&
           Date.now() - notification.timestamp < 3600000 // 1 hour in milliseconds
@@ -129,7 +129,7 @@ export default function NotificationsScreen() {
   };
 
   const markAsRead = async (notificationId: string) => {
-    const updated = notificationHistory.map(n => 
+    const updated = notificationHistory.map(n =>
       n.id === notificationId ? { ...n, isRead: true } : n
     );
     setNotificationHistory(updated);
@@ -178,12 +178,12 @@ export default function NotificationsScreen() {
           ]}
           onPress={() => setFilter(type)}
         >
-          <IconSymbol 
+          <IconSymbol
             name={
               type === 'all' ? 'bell.fill' :
-              type === 'high-risk' ? 'exclamationmark.triangle.fill' :
-              type === 'moderate-risk' ? 'exclamationmark.circle.fill' :
-              'clock.fill'
+                type === 'high-risk' ? 'exclamationmark.triangle.fill' :
+                  type === 'moderate-risk' ? 'exclamationmark.circle.fill' :
+                    'clock.fill'
             }
             size={16}
             color={filter === type ? '#007AFF' : '#8E8E93'}
@@ -192,7 +192,7 @@ export default function NotificationsScreen() {
             styles.filterButtonText,
             filter === type && styles.filterButtonTextActive
           ]}>
-            {type.split('-').map(word => 
+            {type.split('-').map(word =>
               word.charAt(0).toUpperCase() + word.slice(1)
             ).join(' ')}
           </ThemedText>
@@ -203,7 +203,7 @@ export default function NotificationsScreen() {
 
   // Render notification history
   const renderNotificationHistory = () => (
-    <Animated.View 
+    <Animated.View
       style={styles.historySection}
       entering={FadeInUp.duration(600).springify()}
     >
@@ -231,19 +231,19 @@ export default function NotificationsScreen() {
               onPress={() => markAsRead(notification.id)}
             >
               <ThemedView style={styles.notificationIcon}>
-                <IconSymbol 
+                <IconSymbol
                   name={
                     notification.type === 'high-risk' ? 'exclamationmark.triangle.fill' :
-                    notification.type === 'moderate-risk' ? 'exclamationmark.circle.fill' :
-                    notification.type === 'temperature' ? 'thermometer' :
-                    notification.type === 'symptoms' ? 'bandage' :
-                    'clock'
+                      notification.type === 'moderate-risk' ? 'exclamationmark.circle.fill' :
+                        notification.type === 'temperature' ? 'thermometer' :
+                          notification.type === 'symptoms' ? 'bandage' :
+                            'clock'
                   }
                   size={20}
                   color={
                     notification.severity === 'high' ? '#FF453A' :
-                    notification.severity === 'moderate' ? '#FF9500' :
-                    '#30D158'
+                      notification.severity === 'moderate' ? '#FF9500' :
+                        '#30D158'
                   }
                 />
               </ThemedView>
@@ -275,7 +275,7 @@ export default function NotificationsScreen() {
       if (!breed) return null;
 
       const pigRecords = records?.filter(r => r.pig_id === pig.id) || [];
-      const pigChecklistRecords = checklistRecords?.filter(r => 
+      const pigChecklistRecords = checklistRecords?.filter(r =>
         pigRecords.some(pr => pr.id === r.monitoring_id)
       ) || [];
 
@@ -312,9 +312,9 @@ export default function NotificationsScreen() {
           {riskPigs.map((pig, index) => {
             if (!pig) return null;
             const riskColor = getRiskColor(pig.riskLevel);
-            
+
             return (
-              <Animated.View 
+              <Animated.View
                 key={pig.id}
                 entering={FadeInUp.delay(index * 100).duration(600).springify()}
               >
@@ -330,9 +330,9 @@ export default function NotificationsScreen() {
                       <ThemedView style={styles.alertCardTop}>
                         <ThemedView style={styles.pigProfile}>
                           {pig.image ? (
-                            <Image 
-                              source={{ uri: pig.image }} 
-                              style={styles.pigImage} 
+                            <Image
+                              source={{ uri: pig.image }}
+                              style={styles.pigImage}
                             />
                           ) : (
                             <ThemedView style={styles.pigImagePlaceholder}>
@@ -350,12 +350,12 @@ export default function NotificationsScreen() {
                           styles.riskBadge,
                           { backgroundColor: `${riskColor}15` }
                         ]}>
-                          <IconSymbol 
-                            name={pig.riskLevel === 'High' ? 
-                              'exclamationmark.triangle.fill' : 
-                              'exclamationmark.circle.fill'} 
-                            size={16} 
-                            color={riskColor} 
+                          <IconSymbol
+                            name={pig.riskLevel === 'High' ?
+                              'exclamationmark.triangle.fill' :
+                              'exclamationmark.circle.fill'}
+                            size={16}
+                            color={riskColor}
                           />
                           <ThemedText style={[styles.riskText, { color: riskColor }]}>
                             {pig.riskLevel}
@@ -364,14 +364,14 @@ export default function NotificationsScreen() {
                       </ThemedView>
 
                       <ThemedView style={styles.alertMessage}>
-                        <IconSymbol 
-                          name="info.circle.fill" 
-                          size={16} 
-                          color="#8E8E93" 
+                        <IconSymbol
+                          name="info.circle.fill"
+                          size={16}
+                          color="#8E8E93"
                           style={styles.messageIcon}
                         />
                         <ThemedText style={styles.messageText}>
-                          {pig.riskLevel === 'High' 
+                          {pig.riskLevel === 'High'
                             ? 'Immediate attention required'
                             : 'Monitor closely for changes'}
                         </ThemedText>
@@ -399,12 +399,19 @@ export default function NotificationsScreen() {
       {/* Header */}
       <ThemedView style={styles.header}>
         <ThemedView style={styles.headerTop}>
+          <TouchableOpacity onPress={() => require('expo-router').router.back()} style={{ marginRight: 'auto' }}>
+            <IconSymbol name="chevron.left" size={28} color="#007AFF" />
+          </TouchableOpacity>
+        </ThemedView>
+        <ThemedView style={[styles.headerTop, { marginTop: 10 }]}>
           <ThemedText style={styles.title}>Alerts</ThemedText>
-          <ThemedView style={styles.headerBadge}>
-            <IconSymbol name="bell.badge.fill" size={20} color="#007AFF" />
-            <ThemedText style={styles.headerBadgeCount}>
-              {unreadCount}
-            </ThemedText>
+          <ThemedView>
+            <IconSymbol name="bell.fill" size={28} color="#007AFF" />
+            {unreadCount > 0 && (
+              <ThemedText style={styles.headerBadgeCount}>
+                {unreadCount}
+              </ThemedText>
+            )}
           </ThemedView>
         </ThemedView>
         <ThemedText style={styles.subtitle}>
@@ -416,7 +423,7 @@ export default function NotificationsScreen() {
       {renderFilterButtons()}
 
       {/* Content */}
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         refreshControl={
@@ -461,34 +468,20 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     letterSpacing: -0.2,
   },
-  headerBadge: {
-    backgroundColor: 'rgba(0, 122, 255, 0.15)',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
   headerBadgeCount: {
     position: 'absolute',
-    top: -6,
-    right: -6,
+    top: -4,
+    right: -4,
     backgroundColor: '#FF453A',
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     textAlign: 'center',
     overflow: 'hidden',
-    paddingHorizontal: 6,
-    lineHeight: 22,
+    lineHeight: 18,
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },

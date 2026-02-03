@@ -35,35 +35,16 @@ const DatabaseContext = createContext<{
     trendAlerts: false,
     soundEnabled: false,
   },
-  updateNotificationPreferences: async () => {},
+  updateNotificationPreferences: async () => { },
 });
 
 export function DatabaseProvider({ children }: { children: React.ReactNode }) {
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    async function initialize() {
-      try {
-        await initDatabase();
-        setIsLoading(false);
-      } catch (e) {
-        console.error('Failed to initialize database:', e);
-        setError(e instanceof Error ? e : new Error('Database initialization failed'));
-        setIsLoading(false);
-      }
-    }
-
-    initialize();
-  }, []);
-
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
+  const handleError = (e: Error) => {
+    console.error('Database initialization failed:', e);
+    setError(e);
+  };
 
   if (error) {
     return (
@@ -74,15 +55,21 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SQLiteProvider databaseName="asf_monitor.db">
-      <DatabaseContext.Provider value={{ isLoading: false, error: null, notificationPreferences: {
-        highRiskInterval: 0,
-        moderateRiskInterval: 0,
-        quietHoursStart: '',
-        quietHoursEnd: '',
-        trendAlerts: false,
-        soundEnabled: false,
-      }, updateNotificationPreferences: async () => {} }}>
+    <SQLiteProvider
+      databaseName="asf_monitor.db"
+      onInit={initDatabase}
+      useSuspense
+    >
+      <DatabaseContext.Provider value={{
+        isLoading: false, error: null, notificationPreferences: {
+          highRiskInterval: 0,
+          moderateRiskInterval: 0,
+          quietHoursStart: '',
+          quietHoursEnd: '',
+          trendAlerts: false,
+          soundEnabled: false,
+        }, updateNotificationPreferences: async () => { }
+      }}>
         {children}
       </DatabaseContext.Provider>
     </SQLiteProvider>

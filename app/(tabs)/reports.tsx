@@ -1,6 +1,6 @@
 import React from 'react';
 import { useState, useCallback } from 'react';
-import { StyleSheet, Dimensions, Image, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, Dimensions, Image, ScrollView, ActivityIndicator, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
@@ -23,22 +23,22 @@ export default function ReportsScreen() {
   const [filterStatus, setFilterStatus] = useState<ReportFilter>('All');
 
   const renderHeader = () => (
-    <ThemedView style={styles.headerContent}>
-      <Image 
+    <View style={styles.headerContent}>
+      <Image
         source={require('@/assets/images/pig.png')}
         style={styles.headerIcon}
       />
-      <ThemedView style={styles.headerTextContainer}>
+      <View style={styles.headerTextContainer}>
         <ThemedText style={styles.headerTitle}>Reports</ThemedText>
         <ThemedText style={styles.headerSubtitle}>
           View health monitoring reports
         </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.headerBadge}>
+      </View>
+      <View style={styles.headerBadge}>
         <IconSymbol name="chart.bar.fill" size={16} color="#007AFF" />
         <ThemedText style={styles.headerBadgeText}>Health Analytics</ThemedText>
-      </ThemedView>
-    </ThemedView>
+      </View>
+    </View>
   );
 
   useFocusEffect(
@@ -79,7 +79,7 @@ export default function ReportsScreen() {
   if (pigs.length === 0) {
     return (
       <ParallaxScrollView
-        headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
+        headerBackgroundColor={{ light: '#6366F1', dark: '#1E293B' }}
         headerImage={renderHeader()}
       >
         <ThemedView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -95,17 +95,17 @@ export default function ReportsScreen() {
   // Filter pigs based on their risk level
   const filteredPigs = pigs.filter(pig => {
     if (filterStatus === 'All') return true;
-    
+
     const breed = breeds.find(b => b.id === pig.breed_id);
     if (!breed) return false;
 
     const pigRecords = records?.filter(r => r.pig_id === pig.id) || [];
-    const pigChecklistRecords = checklistRecords?.filter(r => 
+    const pigChecklistRecords = checklistRecords?.filter(r =>
       pigRecords.some(pr => pr.id === r.monitoring_id)
     ) || [];
 
     const riskAnalysis = calculateRiskLevel(pigRecords, pigChecklistRecords, breed, pig.category);
-    
+
     switch (filterStatus) {
       case 'High Risk': return riskAnalysis.riskLevel === 'High';
       case 'Moderate': return riskAnalysis.riskLevel === 'Moderate';
@@ -139,8 +139,8 @@ export default function ReportsScreen() {
     // Get pig-specific records
     const pigRecords = records?.filter(r => r.pig_id === pig.id) || [];
     const latestRecord = pigRecords[0];
-    
-    const pigChecklistRecords = checklistRecords?.filter(r => 
+
+    const pigChecklistRecords = checklistRecords?.filter(r =>
       pigRecords.some(pr => pr.id === r.monitoring_id)
     ) || [];
 
@@ -158,7 +158,7 @@ export default function ReportsScreen() {
         minTemp - latestRecord.temperature,
         0
       );
-      
+
       if (tempDeviation >= 1.5) return getRiskColor('High');
       if (tempDeviation >= 1.0) return getRiskColor('Moderate');
       if (tempDeviation >= 0.5) return getRiskColor('Moderate');
@@ -196,13 +196,13 @@ export default function ReportsScreen() {
             <ThemedView style={[
               styles.riskBadge,
               riskAnalysis.riskLevel === 'High' ? styles.highRisk :
-              riskAnalysis.riskLevel === 'Moderate' ? styles.moderateRisk :
-              styles.healthy
+                riskAnalysis.riskLevel === 'Moderate' ? styles.moderateRisk :
+                  styles.healthy
             ]}>
-              <IconSymbol 
-                name={riskAnalysis.riskLevel === 'Low' ? 'checkmark.circle.fill' : 'exclamationmark.triangle.fill'} 
-                size={16} 
-                color={riskColor} 
+              <IconSymbol
+                name={riskAnalysis.riskLevel === 'Low' ? 'checkmark.circle.fill' : 'exclamationmark.triangle.fill'}
+                size={16}
+                color={riskColor}
               />
               <ThemedText style={[styles.riskText, { color: riskColor }]}>
                 {riskAnalysis.riskLevel} Risk
@@ -220,17 +220,17 @@ export default function ReportsScreen() {
                 {latestRecord ? `${latestRecord.temperature}°C` : 'N/A'}
               </ThemedText>
             </ThemedView>
-            
+
             <ThemedView style={styles.detailRow}>
               <ThemedText style={styles.detailLabel}>Symptoms Found:</ThemedText>
               <ThemedView style={styles.symptomsCount}>
                 <ThemedText style={styles.detailValue}>
                   {symptomsCount} {symptomsCount === 1 ? 'Symptom' : 'Symptoms'}
                 </ThemedText>
-                <IconSymbol 
-                  name="exclamationmark.circle.fill" 
-                  size={16} 
-                  color={symptomsCount > 0 ? '#FF453A' : '#30D158'} 
+                <IconSymbol
+                  name="exclamationmark.circle.fill"
+                  size={16}
+                  color={symptomsCount > 0 ? '#FF453A' : '#30D158'}
                 />
               </ThemedView>
             </ThemedView>
@@ -249,7 +249,7 @@ export default function ReportsScreen() {
 
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
+      headerBackgroundColor={{ light: '#6366F1', dark: '#1E293B' }}
       headerImage={renderHeader()}
     >
       <ThemedView style={styles.container}>
@@ -269,47 +269,56 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 16,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
   },
   headerIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     marginBottom: 8,
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   headerTextContainer: {
+    width: '100%',
     alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 10,
   },
   headerTitle: {
-    paddingTop: 3,
     fontSize: 28,
-    fontWeight: 'bold',
+    lineHeight: 34,
+    textAlign: 'center',
+    fontWeight: '800',
     color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.15)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
+    fontWeight: '500',
   },
   headerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 122, 255, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 16,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 24,
     gap: 6,
-    marginTop: 0,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   headerBadgeText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#FFFFFF',
     fontWeight: '600',
   },
@@ -324,27 +333,38 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 16,
+    borderRadius: 20,
     backgroundColor: 'rgba(142, 142, 147, 0.12)',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   chipActive: {
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    backgroundColor: '#6366F1', // Indigo 500
   },
   chipText: {
     fontSize: 14,
     fontWeight: '500',
+    color: '#64748B', // Slate 500
   },
   chipTextActive: {
-    color: '#007AFF',
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   healthCardsList: {
     flex: 1,
   },
   healthCard: {
-    backgroundColor: 'rgba(142, 142, 147, 0.08)',
-    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 24,
     padding: 16,
     gap: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(150, 150, 150, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   healthCardHeader: {
     flexDirection: 'row',
@@ -361,6 +381,8 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(142, 142, 147, 0.1)',
   },
   pigImage: {
     width: '100%',
@@ -369,50 +391,53 @@ const styles = StyleSheet.create({
   pigImagePlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(142, 142, 147, 0.2)',
+    backgroundColor: '#F1F5F9', // Slate 100
     justifyContent: 'center',
     alignItems: 'center',
   },
   pigImageInitial: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#8E8E93',
+    fontWeight: '700',
+    color: '#64748B', // Slate 500
   },
   pigName: {
     fontSize: 17,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   pigBreed: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: '#64748B', // Slate 500
+    fontWeight: '500',
   },
   riskBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   highRisk: {
-    backgroundColor: 'rgba(255, 69, 58, 0.1)',
+    backgroundColor: '#FEF2F2',
   },
   moderateRisk: {
-    backgroundColor: 'rgba(255, 149, 0, 0.1)',
+    backgroundColor: '#FFFBEB',
   },
   healthy: {
-    backgroundColor: 'rgba(48, 209, 88, 0.1)',
+    backgroundColor: '#ECFDF5',
   },
   riskText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#FF9500',
+    color: '#64748B',
   },
   healthDetails: {
     gap: 12,
-    backgroundColor: 'rgba(142, 142, 147, 0.06)',
-    padding: 12,
-    borderRadius: 12,
+    backgroundColor: 'rgba(142, 142, 147, 0.04)',
+    padding: 16,
+    borderRadius: 16,
   },
   temperatureRow: {
     flexDirection: 'row',
@@ -429,17 +454,18 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: '#64748B', // Slate 500
     fontWeight: '500',
   },
   detailValue: {
     fontSize: 15,
-    fontWeight: '400',
+    fontWeight: '500',
+    color: '#0F172A', // Slate 900
   },
   temperatureValue: {
     fontSize: 17,
-    fontWeight: '600',
-    color: '#FF9500',
+    fontWeight: '700',
+    color: '#F59E0B',
   },
   symptomsCount: {
     flexDirection: 'row',
@@ -447,19 +473,25 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   healthCardLink: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   emptyText: {
     fontSize: 16,
     textAlign: 'center',
-    marginBottom: 20,
-    color: '#8E8E93',
+    marginBottom: 24,
+    color: '#64748B', // Slate 500
+    lineHeight: 24,
   },
   addButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    backgroundColor: '#6366F1', // Indigo 500
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 100,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   addButtonText: {
     color: '#FFFFFF',
