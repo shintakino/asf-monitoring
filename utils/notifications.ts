@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
-import * as BackgroundFetch from 'expo-background-fetch';
+import * as BackgroundTask from 'expo-background-task';
 import { Platform } from 'react-native';
 import { calculateRiskLevel } from './risk';
 import type { Pig, MonitoringRecord, ChecklistRecord, Breed } from './database';
@@ -15,7 +15,7 @@ const BACKGROUND_FETCH_TASK = 'BACKGROUND_FETCH_TASK';
 TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
   try {
     const db = await openDatabase();
-    
+
     // Fetch required data from database with type casting
     const pigs = (await db.getAllAsync('SELECT * FROM Pigs')) as Pig[];
     const records = (await db.getAllAsync('SELECT * FROM monitoring_records')) as MonitoringRecord[];
@@ -24,11 +24,11 @@ TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
 
     // Schedule notifications based on fresh data
     await scheduleRiskNotification(pigs, records, checklistRecords, breeds);
-    
-    return BackgroundFetch.BackgroundFetchResult.NewData;
+
+    return BackgroundTask.BackgroundTaskResult.Success;
   } catch (error) {
     console.error('Background fetch failed:', error);
-    return BackgroundFetch.BackgroundFetchResult.Failed;
+    return BackgroundTask.BackgroundTaskResult.Failed;
   }
 });
 
@@ -38,16 +38,16 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
 export async function registerBackgroundTasks() {
   try {
     // Register background fetch
-    await BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, {
+    await BackgroundTask.registerTaskAsync(BACKGROUND_FETCH_TASK, {
       minimumInterval: 60 * 15, // 15 minutes
-      stopOnTerminate: false,
-      startOnBoot: true
     });
 
     // Set up notification channels for Android
@@ -80,6 +80,8 @@ export async function registerBackgroundTasks() {
   }
 }
 
+
+
 // Update the notification scheduling function
 export async function scheduleRiskNotification(
   pigs: Pig[],
@@ -97,7 +99,7 @@ export async function scheduleRiskNotification(
       if (!breed) return { ...pig, riskLevel: 'Low' as const };
 
       const pigRecords = records.filter(r => r.pig_id === pig.id);
-      const pigChecklistRecords = checklistRecords.filter(r => 
+      const pigChecklistRecords = checklistRecords.filter(r =>
         pigRecords.some(pr => pr.id === r.monitoring_id)
       );
 
@@ -159,7 +161,7 @@ export async function registerForPushNotificationsAsync() {
     // Request permission for notifications
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
-    
+
     if (existingStatus !== 'granted') {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
@@ -245,7 +247,7 @@ export async function scheduleBackgroundHealthCheck(
         content: {
           title: "Pig Health Check",
           body: "Checking pig health status...",
-          data: { 
+          data: {
             type: 'health-check',
             pigIds: pigs.map(p => p.id)
           },
@@ -277,7 +279,7 @@ export async function scheduleTemperatureTrendNotification(
   if (recentRecords.length >= 3) {
     const temps = recentRecords.map(r => r.temperature);
     const isIncreasing = temps.every((t, i) => i === 0 || t > temps[i - 1]);
-    const normalRange = pig.category === 'Adult' 
+    const normalRange = pig.category === 'Adult'
       ? { min: breed.min_temp_adult, max: breed.max_temp_adult }
       : { min: breed.min_temp_young, max: breed.max_temp_young };
 
@@ -340,19 +342,19 @@ export async function scheduleMultipleSymptomsNotification(
 ) {
   const symptoms = checklistRecords.filter(r => r.checked);
   const criticalSymptoms = symptoms.filter(s => s.risk_weight >= 4);
-  
+
   if (symptoms.length >= 3 || criticalSymptoms.length > 0) {
     const isHighRisk = criticalSymptoms.length > 0;
-    
+
     // Immediate alert
     await Notifications.scheduleNotificationAsync({
       content: {
         title: isHighRisk ? "🚨 Critical Symptoms Alert" : "⚠️ Multiple Symptoms Alert",
-        body: isHighRisk 
+        body: isHighRisk
           ? `${pig.name} has ${criticalSymptoms.length} critical symptom(s). Immediate attention required!`
           : `${pig.name} is showing ${symptoms.length} different symptoms. Close monitoring needed.`,
-        data: { 
-          type: 'symptoms-alert', 
+        data: {
+          type: 'symptoms-alert',
           pigId: pig.id,
           severity: isHighRisk ? 'critical' : 'warning',
           symptoms: symptoms.map(s => s.symptom)
@@ -364,7 +366,7 @@ export async function scheduleMultipleSymptomsNotification(
     // Follow-up reminder in 2 hours
     const followUpDate = new Date();
     followUpDate.setHours(followUpDate.getHours() + 2);
-    
+
     await Notifications.scheduleNotificationAsync({
       content: {
         title: "🔄 Symptom Check Reminder",
@@ -385,11 +387,11 @@ function calculateSecondsUntil(hours: number, minutes: number): number {
   const now = new Date();
   const target = new Date();
   target.setHours(hours, minutes, 0, 0);
-  
+
   if (target.getTime() < now.getTime()) {
     target.setDate(target.getDate() + 1);
   }
-  
+
   return Math.floor((target.getTime() - now.getTime()) / 1000);
 }
 
@@ -414,9 +416,9 @@ export async function scheduleHealthNotifications(
 // Update the notification handler
 export function setupBackgroundNotificationHandler() {
   Notifications.addNotificationResponseReceivedListener(async (response) => {
-    const data = response.notification.request.content.data;
-    
-    if (data.type === 'health-check') {
+    const data = response.notification.request.content.data as { type?: string; pigIds?: number[] };
+
+    if (data.type === 'health-check' && data.pigIds) {
       try {
         const db = await openDatabase();
         const pigs = (await db.getAllAsync('SELECT * FROM Pigs WHERE id IN (?)', [data.pigIds.join(',')])) as Pig[];
@@ -432,26 +434,3 @@ export function setupBackgroundNotificationHandler() {
   });
 }
 
-// Add this at the beginning of the file after the imports
-if (Platform.OS === 'android') {
-  Notifications.setNotificationChannelAsync('monitoring-reminders', {
-    name: 'Monitoring Reminders',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#FF453A',
-  });
-
-  Notifications.setNotificationChannelAsync('symptom-checks', {
-    name: 'Symptom Checks',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#FF9500',
-  });
-
-  Notifications.setNotificationChannelAsync('health-checks', {
-    name: 'Health Checks',
-    importance: Notifications.AndroidImportance.DEFAULT,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#32ADE6',
-  });
-} 
