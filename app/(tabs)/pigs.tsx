@@ -1,13 +1,13 @@
-import React from 'react';
-import { useState, useCallback } from 'react';
-import { StyleSheet, Dimensions, Image, TextInput, ActivityIndicator, ScrollView, Pressable, View } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, Dimensions, Image, TextInput, ActivityIndicator, ScrollView, Pressable, View, TouchableOpacity, StatusBar } from 'react-native';
 import { Link } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
-import Animated, { FadeInUp, withSpring, useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { FadeInUp, withSpring, useSharedValue, useAnimatedStyle, withDelay } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Components
-import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -83,69 +83,46 @@ const PigCard: React.FC<{
     entering={FadeInUp.delay(100).duration(600).springify()}
     style={styles.pigCard}
   >
-    <ThemedView style={styles.pigCardContent}>
-      <ThemedView style={styles.pigImageWrapper}>
-        <ThemedView style={styles.pigImageContainer}>
-          {pig.image ? (
-            <Image source={{ uri: pig.image }} style={styles.pigImage} />
-          ) : (
-            <ThemedView style={styles.pigImagePlaceholder}>
-              <ThemedText style={styles.pigImageInitial}>
-                {pig.name.charAt(0).toUpperCase()}
+    <ThemedView lightColor="#FFFFFF" darkColor="#1E293B" style={styles.pigCardInner}>
+      <View style={styles.pigCardHeader}>
+        <View style={styles.pigAvatarContainer}>
+          <ThemedText style={styles.pigAvatarText}>{pig.name.charAt(0).toUpperCase()}</ThemedText>
+        </View>
+        <View style={styles.pigHeaderInfo}>
+          <View style={styles.pigNameRow}>
+            <ThemedText style={styles.pigName} type="subtitle">{pig.name}</ThemedText>
+            <View style={[styles.statusBadge, pig.category === 'Adult' ? styles.badgeAdult : styles.badgeYoung]}>
+              <ThemedText style={[styles.statusText, pig.category === 'Adult' ? styles.textAdult : styles.textYoung]}>
+                {pig.category}
               </ThemedText>
-            </ThemedView>
+            </View>
+          </View>
+          <ThemedText style={styles.pigBreed}>{pig.breed_name}</ThemedText>
+        </View>
+      </View>
+
+      <View style={styles.actionRow}>
+        <Link href={{ pathname: "/(pigs)/[id]/edit", params: { id: pig.id } }} asChild>
+          <TouchableOpacity style={styles.actionButton}>
+            <IconSymbol name="pencil" size={16} color="#4F46E5" />
+            <ThemedText style={styles.actionText}>Edit</ThemedText>
+          </TouchableOpacity>
+        </Link>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.deleteAction]}
+          onPress={onDelete}
+          disabled={isDeleting}
+        >
+          {isDeleting ? (
+            <ActivityIndicator size="small" color="#EF4444" />
+          ) : (
+            <>
+              <IconSymbol name="trash" size={16} color="#EF4444" />
+              <ThemedText style={[styles.actionText, styles.deleteText]}>Delete</ThemedText>
+            </>
           )}
-        </ThemedView>
-      </ThemedView>
-
-      <ThemedView style={styles.pigInfo}>
-        <ThemedView style={styles.pigNameRow}>
-          <ThemedText style={styles.pigName}>{pig.name}</ThemedText>
-          <ThemedView style={[
-            styles.categoryBadge,
-            pig.category === 'Adult' ? styles.adultBadge : styles.youngBadge
-          ]}>
-            <ThemedText style={[
-              styles.categoryText,
-              pig.category === 'Adult' ? styles.adultText : styles.youngText
-            ]}>
-              {pig.category}
-            </ThemedText>
-          </ThemedView>
-        </ThemedView>
-
-        <ThemedView style={styles.pigMetaInfo}>
-          <ThemedText style={styles.breedName}>{pig.breed_name}</ThemedText>
-        </ThemedView>
-
-        <ThemedView style={styles.pigActions}>
-          <Link
-            href={{
-              pathname: "/(pigs)/[id]/edit",
-              params: { id: pig.id }
-            }}
-            style={styles.actionButton}
-          >
-            <IconSymbol name="pencil" size={16} color="#007AFF" />
-            <ThemedText style={styles.actionButtonText}>Edit</ThemedText>
-          </Link>
-          <ThemedView
-            style={[styles.actionButton, styles.deleteButton]}
-            onTouchEnd={onDelete}
-          >
-            {isDeleting ? (
-              <ActivityIndicator size="small" color="#FF453A" />
-            ) : (
-              <>
-                <IconSymbol name="trash" size={16} color="#FF453A" />
-                <ThemedText style={[styles.actionButtonText, styles.deleteButtonText]}>
-                  Delete
-                </ThemedText>
-              </>
-            )}
-          </ThemedView>
-        </ThemedView>
-      </ThemedView>
+        </TouchableOpacity>
+      </View>
     </ThemedView>
   </Animated.View>
 );
@@ -158,6 +135,7 @@ export default function PigsScreen() {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('All');
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     useCallback(() => {
@@ -193,77 +171,65 @@ export default function PigsScreen() {
   };
 
   return (
-    <>
-      <ParallaxScrollView
-        headerBackgroundColor={{ light: '#6366F1', dark: '#1E293B' }}
-        headerImage={
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <LinearGradient
+          colors={['#6366F1', '#4338CA']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.headerGradient, { paddingTop: insets.top + 20 }]}
+        >
           <View style={styles.headerContent}>
-            <Image
-              source={require('@/assets/images/pig.png')}
-              style={styles.headerIcon}
-            />
-            <View style={styles.headerTextContainer}>
-              <ThemedText style={styles.headerTitle}>Pig Management</ThemedText>
-              <ThemedText style={styles.headerSubtitle}>
-                Monitor and track your pigs' health
-              </ThemedText>
+            <View style={styles.headerAvatarContainer}>
+              <Image source={require('@/assets/images/pig.png')} style={styles.headerAvatar} />
             </View>
-            <Link href="/(pigs)/new" style={styles.addButton}>
-              <IconSymbol name="plus.circle.fill" size={20} color="#FFFFFF" />
-              <ThemedText style={styles.addButtonText}>Add New Pig</ThemedText>
+            <ThemedText style={styles.headerTitle}>Pig Management</ThemedText>
+            <ThemedText style={styles.headerSubtitle}>Monitor and track your pigs' health</ThemedText>
+
+            <Link href="/(pigs)/new" asChild>
+              <TouchableOpacity style={styles.headerAddButton}>
+                <IconSymbol name="plus.circle.fill" size={20} color="#FFFFFF" />
+                <ThemedText style={styles.headerAddButtonText}>Add New Pig</ThemedText>
+              </TouchableOpacity>
             </Link>
           </View>
-        }
-      >
-        <ThemedView style={styles.container}>
-          <ThemedView style={styles.searchContainer}>
-            <ThemedView style={styles.searchBar}>
-              <IconSymbol name="magnifyingglass" size={20} color="#8E8E93" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search pigs..."
-                placeholderTextColor="#8E8E93"
-                value={searchQuery}
-                onChangeText={handleSearch}
-              />
-            </ThemedView>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <ThemedView style={styles.filterButtons}>
-                {(['All', 'Adult', 'Young'] as CategoryFilter[]).map((category, index) => (
-                  <AnimatedFilterButton
-                    key={category}
-                    type={category}
-                    isActive={categoryFilter === category}
-                    onPress={() => setCategoryFilter(category)}
-                    delay={index * 100}
-                  />
-                ))}
-              </ThemedView>
-            </ScrollView>
-          </ThemedView>
+        </LinearGradient>
 
+        <View style={styles.searchSectionOverlap}>
+          <View style={styles.searchBar}>
+            <IconSymbol name="magnifyingglass" size={20} color="#94A3B8" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search pigs..."
+              placeholderTextColor="#94A3B8"
+              value={searchQuery}
+              onChangeText={handleSearch}
+            />
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+            {(['All', 'Adult', 'Young'] as CategoryFilter[]).map((category, index) => (
+              <AnimatedFilterButton
+                key={category}
+                type={category}
+                isActive={categoryFilter === category}
+                onPress={() => setCategoryFilter(category)}
+                delay={index * 100}
+              />
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={styles.contentSection}>
           {isLoading ? (
-            <ThemedView style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#007AFF" />
-            </ThemedView>
+            <ActivityIndicator size="large" color="#6366F1" style={{ marginTop: 40 }} />
           ) : error ? (
-            <ThemedView style={styles.errorContainer}>
-              <IconSymbol name="exclamationmark.triangle.fill" size={32} color="#FF453A" />
+            <View style={styles.errorContainer}>
               <ThemedText style={styles.errorText}>{error.message}</ThemedText>
-            </ThemedView>
-          ) : filteredPigs.length === 0 ? (
-            <ThemedView style={styles.emptyState}>
-              <IconSymbol name="square.stack.3d.up.fill" size={64} color="#007AFF" />
-              <ThemedText style={styles.emptyStateTitle}>No Pigs Yet</ThemedText>
-              <ThemedText style={styles.emptyStateText}>
-                Start by adding your first pig to monitor their health
-              </ThemedText>
-              <Link href="/(pigs)/new" style={styles.emptyStateButton}>
-                <ThemedText style={styles.emptyStateButtonText}>Add Your First Pig</ThemedText>
-              </Link>
-            </ThemedView>
+            </View>
           ) : (
-            <ScrollView style={styles.pigsList} contentContainerStyle={styles.pigsListContent}>
+            <View style={styles.pigsList}>
               {filteredPigs.map(pig => (
                 <PigCard
                   key={pig.id}
@@ -272,104 +238,118 @@ export default function PigsScreen() {
                   isDeleting={deletingId === pig.id}
                 />
               ))}
-            </ScrollView>
-          )}
-        </ThemedView>
-      </ParallaxScrollView>
 
-      <Link href="/(pigs)/new" asChild>
-        <AnimatedPressable
-          entering={FadeInUp.delay(500).springify()}
-          style={styles.floatingButton}
-          android_ripple={{ color: 'rgba(255, 255, 255, 0.2)', borderless: true }}
-        >
-          <ThemedView style={styles.fabContainer}>
-            <MaterialIcons name="add" size={24} color="#FFFFFF" />
-          </ThemedView>
-        </AnimatedPressable>
-      </Link>
+              <View style={styles.addMoreCard}>
+                <View style={styles.addMoreIconBg}>
+                  <IconSymbol name="pawprint.fill" size={24} color="#CBD5E1" />
+                </View>
+                <ThemedText style={styles.addMoreText}>Ready to add more?</ThemedText>
+              </View>
+            </View>
+          )}
+        </View>
+        <View style={{ height: 100 }} />
+      </ScrollView>
 
       {deleteConfirm && (
         <ConfirmDialog
           title="Delete Pig"
           message="Are you sure you want to delete this pig? This action cannot be undone."
-          icon="trash.fill"
+          icon="trash"
           iconColor="#FF453A"
           onConfirm={handleDeleteConfirm}
           onCancel={() => setDeleteConfirm(null)}
         />
       )}
-    </>
+    </View>
   );
 }
 
-const { width } = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    gap: 20,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  headerGradient: {
+    paddingHorizontal: 20,
+    paddingBottom: 80,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    alignItems: 'center',
   },
   headerContent: {
-    paddingTop: 60,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
     alignItems: 'center',
-    gap: 16,
-  },
-  headerIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    marginBottom: 8,
-    borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  headerTextContainer: {
+    gap: 8,
     width: '100%',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
+  },
+  headerAvatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FFFFFF',
+    padding: 4,
+    marginBottom: 8,
+  },
+  headerAvatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
   },
   headerTitle: {
-    fontSize: 28,
-    lineHeight: 34,
-    textAlign: 'center',
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '700',
     color: '#FFFFFF',
-    letterSpacing: -0.5,
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
   },
   headerSubtitle: {
-    fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-    fontWeight: '500',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 16,
   },
-  searchContainer: {
+  headerAddButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 30,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  headerAddButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  searchSectionOverlap: {
+    marginTop: -50,
+    paddingHorizontal: 20,
     gap: 16,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(142, 142, 147, 0.12)',
-    paddingHorizontal: 12,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 16,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(142, 142, 147, 0.1)',
+    borderRadius: 30,
+    gap: 10,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#000000',
+    color: '#1E293B',
   },
-  filterButtons: {
-    flexDirection: 'row',
-    gap: 8,
+  filterRow: {
+    gap: 10,
     paddingVertical: 4,
   },
   filterButton: {
@@ -378,71 +358,63 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(142, 142, 147, 0.12)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: '#E2E8F0',
     gap: 6,
   },
   filterButtonActive: {
-    backgroundColor: '#6366F1', // Indigo 500
+    backgroundColor: '#6366F1',
+    borderColor: '#6366F1',
   },
   filterButtonText: {
     fontSize: 14,
-    color: '#64748B', // Slate 500
+    color: '#64748B',
     fontWeight: '500',
   },
   filterButtonTextActive: {
     color: '#FFFFFF',
-    fontWeight: '600',
   },
-  pigCard: {
-    borderRadius: 24,
-    overflow: 'hidden',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(150, 150, 150, 0.1)',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
+  contentSection: {
+    padding: 20,
   },
-  pigCardContent: {
-    flexDirection: 'row',
-    padding: 16,
+  pigsList: {
     gap: 16,
   },
-  pigImageWrapper: {
-    position: 'relative',
+  pigCard: {
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  pigImageContainer: {
+  pigCardInner: {
+    borderRadius: 24,
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+  },
+  pigCardHeader: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 20,
+  },
+  pigAvatarContainer: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  pigImage: {
-    width: '100%',
-    height: '100%',
-  },
-  pigImagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#F1F5F9', // Slate 100
-    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  pigImageInitial: {
+  pigAvatarText: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#64748B', // Slate 500
+    color: '#6366F1',
   },
-  pigInfo: {
+  pigHeaderInfo: {
     flex: 1,
-    gap: 8,
+    justifyContent: 'center',
+    gap: 4,
   },
   pigNameRow: {
     flexDirection: 'row',
@@ -450,177 +422,103 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   pigName: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  categoryBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 100,
-    borderWidth: 1,
-  },
-  adultBadge: {
-    backgroundColor: '#F0F9FF', // Sky 50
-    borderColor: 'transparent',
-  },
-  youngBadge: {
-    backgroundColor: '#FFFBEB', // Amber 50
-    borderColor: 'transparent',
-  },
-  categoryText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  adultText: {
-    color: '#0EA5E9', // Sky 500
-  },
-  youngText: {
-    color: '#D97706', // Amber 600
-  },
-  pigMetaInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  breedName: {
-    fontSize: 14,
-    color: '#64748B', // Slate 500
-  },
-  pigActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F1F5F9', // Slate 100
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
-  },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#475569', // Slate 600
-  },
-  deleteButton: {
-    backgroundColor: '#FEF2F2', // Red 50
-  },
-  deleteButtonText: {
-    color: '#EF4444', // Red 500
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: 200,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#FEF2F2',
-    borderRadius: 16,
-    gap: 12,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#EF4444',
-    textAlign: 'center',
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-    backgroundColor: 'rgba(150, 150, 150, 0.05)',
-    borderRadius: 24,
-    marginTop: 32,
-    minHeight: 300,
-    borderWidth: 2,
-    borderColor: 'rgba(150, 150, 150, 0.1)',
-    borderStyle: 'dashed',
-  },
-  emptyStateTitle: {
     fontSize: 20,
     fontWeight: '700',
-    marginTop: 16,
-    marginBottom: 8,
+    color: '#1E293B',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  badgeAdult: {
+    backgroundColor: '#EFF6FF', // Blue 50
+  },
+  badgeYoung: {
+    backgroundColor: '#FFF7ED', // Orange 50
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  textAdult: {
+    color: '#3B82F6',
+  },
+  textYoung: {
+    color: '#F97316',
+  },
+  pigBreed: {
+    fontSize: 14,
     color: '#64748B',
   },
-  emptyStateText: {
-    fontSize: 15,
-    textAlign: 'center',
-    opacity: 0.8,
-    marginBottom: 24,
-    lineHeight: 22,
-    color: '#64748B',
+  actionRow: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 16,
+    gap: 12,
   },
-  emptyStateButton: {
-    backgroundColor: '#6366F1', // Indigo 500
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 100,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  emptyStateButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  pigsList: {
+  actionButton: {
     flex: 1,
-  },
-  pigsListContent: {
-    gap: 16,
-    paddingBottom: 100,
-  },
-  floatingButton: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    zIndex: 1000,
-  },
-  fabContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#6366F1', // Indigo 500
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.2)',
-    shadowColor: '#6366F1',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 16,
+    justifyContent: 'center',
     paddingVertical: 8,
-    borderRadius: 24,
-    gap: 6,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    gap: 8,
   },
-  addButtonText: {
+  deleteAction: {
+    borderLeftWidth: 1,
+    borderLeftColor: '#F1F5F9',
+  },
+  actionText: {
     fontSize: 14,
-    color: '#FFFFFF',
     fontWeight: '600',
+    color: '#1E293B',
+  },
+  deleteText: {
+    color: '#EF4444',
+  },
+  addMoreCard: {
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 16,
+  },
+  addMoreIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  addMoreText: {
+    fontSize: 15,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  addMoreButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#0F172A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#EF4444',
   },
 }); 
