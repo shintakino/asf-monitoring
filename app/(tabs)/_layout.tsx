@@ -19,25 +19,21 @@ export default function TabLayout() {
         tabBarInactiveTintColor: '#94A3B8',
         tabBarStyle: {
           backgroundColor: Platform.select({
-            ios: colorScheme === 'dark' ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+            ios: colorScheme === 'dark' ? Colors.dark.surface : '#FFFFFF',
             default: colorScheme === 'dark' ? Colors.dark.surface : '#FFFFFF',
           }),
           borderTopWidth: 0,
-          position: 'absolute',
-          bottom: 24,
-          left: 20,
-          right: 20,
-          borderRadius: 24,
-          height: 64,
-          paddingBottom: 0,
+          height: Platform.select({ ios: 85, default: 65 }), // Standard height
+          paddingBottom: Platform.select({ ios: 20, default: 10 }), // Padding for safe area/spacing
+          paddingTop: 10,
           shadowColor: '#000',
           shadowOffset: {
             width: 0,
-            height: 4,
+            height: -2, // Shadow upwards
           },
-          shadowOpacity: 0.1,
-          shadowRadius: 12,
-          elevation: 8,
+          shadowOpacity: 0.05,
+          shadowRadius: 10,
+          elevation: 5,
         },
         tabBarItemStyle: {
           paddingVertical: 8,
@@ -82,6 +78,6 @@ export default function TabLayout() {
           ),
         }}
       />
-    </Tabs>
+    </Tabs >
   );
 }

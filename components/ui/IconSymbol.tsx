@@ -35,6 +35,8 @@ const MAPPING = {
   'plus.circle.fill': 'add-circle',
   'magnifyingglass': 'search',
   'wifi.slash': 'wifi-off',
+  'calendar': 'calendar-today',
+  'ellipsis': 'more-horiz',
 } as Partial<
   Record<
     import('expo-symbols').SymbolViewProps['name'],
